@@ -451,7 +451,7 @@ impl Sim {
         self.move_cars();
         self.time += DT;
         self.steps += 1;
-        if self.steps % 10 == 0 {
+        if self.steps.is_multiple_of(10) {
             self.sample();
         }
     }
@@ -602,6 +602,12 @@ impl Sim {
     /// A car may pull out of a house when it would not be in anyone's way.
     fn room_to_pull_out(&self, lane: usize, s: f64) -> bool {
         let safe_behind = |gap: f64, v: f64| gap >= 2.0 + v + v * v / (2.0 * DECIDE_BRAKE);
+        // The car that just left the lane may still have its tail on it.
+        if let Some((rear, _)) = self.tail_of_last_out(lane) {
+            if self.net.lanes[lane].length + rear - s < 2.0 {
+                return false;
+            }
+        }
         let mut follower = false;
         for &i in &self.lane_cars[lane] {
             let c = &self.cars[i];
@@ -707,6 +713,18 @@ impl Sim {
         } else {
             c.s - self.net.lanes[mv.from].length
         }
+    }
+
+    /// The car that last left `lane` for the junction, while it is still in the
+    /// junction: where its rear is, measured from the end of the lane, and which car.
+    fn tail_of_last_out(&self, lane: usize) -> Option<(f64, usize)> {
+        let (j, id) = self.last_out[lane]?;
+        let f = &self.cars[j];
+        if !self.alive[j] || f.id != id {
+            return None;
+        }
+        let m = if f.on_mov { f.mov } else { f.tail_mov };
+        (m != NONE && self.net.movements[m].from == lane).then(|| (self.u_on(f, m) - CAR_LEN, j))
     }
 
     /// Is there room in the lane a movement leads to, counting cars already promised a place?
@@ -840,8 +858,13 @@ impl Sim {
                 }
                 let dist = length - c.s;
                 if c.committed {
-                    // Caught by a red light with room to stop: stop after all.
-                    if light == Light::Red && dist > c.v * c.v / (2.0 * 4.5) + STOP_BACK {
+                    // The light changed and there is still room to stop: stop after all.
+                    let brake = match light {
+                        Light::Amber if dist > 2.5 => DECIDE_BRAKE,
+                        Light::Red => 4.5,
+                        _ => continue,
+                    };
+                    if dist > c.v * c.v / (2.0 * brake) + STOP_BACK + c.v * DT {
                         c.committed = false;
                         let m = c.mov;
                         self.occupants[m].retain(|&j| j != i);
@@ -950,21 +973,12 @@ impl Sim {
             let dist = l.length - c.s;
             if let Some(j) = ahead {
                 car(&mut seen, self.cars[j].s - CAR_LEN - c.s, self.cars[j].v);
-            } else if let Some((j, id)) = self.last_out[lane] {
+            } else if let Some((rear, j)) = self.tail_of_last_out(lane) {
                 // The car that left this lane last may still have its tail in the way.
                 let f = &self.cars[j];
-                if self.alive[j] && f.id == id {
-                    let m = if f.on_mov && self.net.movements[f.mov].from == lane {
-                        f.mov
-                    } else {
-                        f.tail_mov
-                    };
-                    if m != NONE && self.net.movements[m].from == lane {
-                        let rear = self.u_on(f, m) - CAR_LEN;
-                        if m == c.mov || rear < 4.0 {
-                            car(&mut seen, dist + rear, f.v);
-                        }
-                    }
+                let same_way = c.mov != NONE && (f.mov == c.mov || f.tail_mov == c.mov);
+                if same_way || rear < 4.0 {
+                    car(&mut seen, dist + rear, f.v);
                 }
             }
             if c.mov != NONE {
@@ -1164,7 +1178,7 @@ impl Sim {
         if self.check_overlaps {
             self.tally.overlaps += self.count_overlaps();
         }
-        if self.steps % 100 == 0 {
+        if self.steps.is_multiple_of(100) {
             self.bucket.time = self.time;
             self.bucket.queued = queued;
             self.bucket.backlog = self.backlog() as u32;

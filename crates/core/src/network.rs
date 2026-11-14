@@ -7,13 +7,13 @@
 use crate::grid::{Cell, Grid};
 
 /// Side of one grid cell in metres.
-pub const CELL: f64 = 16.0;
+pub const CELL: f64 = 20.0;
 /// Distance of a lane's centre from the middle of the road.
 pub const LANE_OFFSET: f64 = 1.75;
 /// Half the side of a junction box: lanes stop this far from the node centre.
-pub const BOX_HALF: f64 = 4.5;
+pub const BOX_HALF: f64 = 6.5;
 /// Radius used to round a bend in a road.
-const BEND_RADIUS: f64 = 5.0;
+const BEND_RADIUS: f64 = 9.0;
 /// Speed limit on lanes, m/s (50 km/h).
 pub const LANE_SPEED: f64 = 13.9;
 /// Speed through a turn inside a junction, m/s.
@@ -214,6 +214,7 @@ impl Network {
     }
 
     /// Compile a drawn grid.
+    #[allow(clippy::needless_range_loop)]
     pub fn from_grid(grid: &Grid) -> Self {
         let mut net = Network::default();
         let n = grid.cells.len();
