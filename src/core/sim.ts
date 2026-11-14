@@ -12,7 +12,7 @@ import {
 } from "./signals.ts";
 
 /** Length of one grid cell in metres. */
-export const CELL = 24;
+export const CELL = 16;
 /** Where cars stop for a signal, measured along the leg that leads into the junction. */
 export const STOP_LINE = CELL / 2 - 1;
 /** Cars never close up further than this. */
@@ -20,9 +20,9 @@ export const MIN_GAP = 0.5;
 /** A driver goes through amber only if stopping would need more braking than this. */
 const COMFORT_BRAKE = 4;
 /** How many legs past the current one a driver looks for cars and signals. */
-const LOOK_AHEAD_LEGS = 3;
+const LOOK_AHEAD_LEGS = 4;
 /** A junction's detectors see cars this many legs away. */
-const DETECTOR_LEGS = 3;
+const DETECTOR_LEGS = 4;
 /** Below this speed a car counts as waiting. */
 const WAIT_SPEED = 0.5;
 
@@ -356,6 +356,15 @@ export class Simulation {
     if (leg + 2 >= car.path.length) return false;
     const tail = byEdge.get(edgeKey(car.path[leg + 1]!, car.path[leg + 2]!, cells))?.[0];
     return tail !== undefined && tail.pos < CAR_LENGTH + 3 && tail.speed < 1;
+  }
+
+  /** Forget the trips finished so far; cars on the road keep going. */
+  resetStats(): void {
+    this.arrived = 0;
+    this.travelSum = 0;
+    this.delaySum = 0;
+    this.waitSum = 0;
+    this.hardStops = 0;
   }
 
   stats(): Stats {
