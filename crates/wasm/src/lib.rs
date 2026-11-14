@@ -228,7 +228,7 @@ pub extern "C" fn tr_sim_step(handle: i32, steps: u32) {
     });
 }
 
-/// Fill the buffer with x, y, heading x, heading y, speed, acceleration per car.
+/// Fill the buffer with x, y, heading x, heading y, speed, acceleration, id per car.
 /// Returns the number of cars.
 #[no_mangle]
 pub extern "C" fn tr_sim_cars(handle: i32) -> u32 {
@@ -236,9 +236,9 @@ pub extern "C" fn tr_sim_cars(handle: i32) -> u32 {
         buf.clear();
         for c in sim.cars() {
             let (p, h) = sim.pose(c);
-            buf.extend([p.0, p.1, h.0, h.1, c.v, c.a].map(|v| v as f32));
+            buf.extend([p.0, p.1, h.0, h.1, c.v, c.a, f64::from(c.id)].map(|v| v as f32));
         }
-        (buf.len() / 6) as u32
+        (buf.len() / 7) as u32
     })
 }
 
@@ -315,6 +315,12 @@ pub extern "C" fn tr_sim_series(handle: i32) -> u32 {
 pub unsafe extern "C" fn tr_sim_set_controller(handle: i32, ptr: *const u8, len: usize) -> i32 {
     let id = read_text(ptr, len);
     with_sim(handle, |sim, _, _| i32::from(sim.set_controller(&id)))
+}
+
+/// Measure only trips requested after `seconds` (the warm-up).
+#[no_mangle]
+pub extern "C" fn tr_sim_set_warmup(handle: i32, seconds: f64) {
+    with_sim(handle, |sim, _, _| sim.tally.measure_from = seconds);
 }
 
 #[no_mangle]
