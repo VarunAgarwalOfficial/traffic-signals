@@ -55,7 +55,11 @@ const DIRS: readonly (readonly [number, number])[] = [
 
 export class MapView {
   scenario: Scenario | null = null;
+  /** The compiled network, in the coordinates of the whole drawing area. */
   network: NetworkInfo | null = null;
+  /** Where the core's origin is: it only sees the part of the grid that is drawn on. */
+  private shiftX = 0;
+  private shiftY = 0;
   palette: Palette = readPalette();
   /** Pixels per metre and the screen position of the world origin, in CSS pixels. */
   scale = 2;
@@ -80,6 +84,29 @@ export class MapView {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("This browser cannot draw on a canvas.");
     this.ctx = ctx;
+  }
+
+  /** Take the network of a simulation started from `formatScenario(this.scenario)`. */
+  setNetwork(net: NetworkInfo | null): void {
+    const sc = this.scenario;
+    this.network = net;
+    if (!net || !sc) return;
+    const box = drawnBounds(sc) ?? { c0: 0, r0: 0, c1: 0, r1: 0 };
+    const cols = box.c1 - box.c0 + 1;
+    const here = (cell: number) =>
+      (Math.floor(cell / cols) + box.r0) * sc.cols + (cell % cols) + box.c0;
+    this.shiftX = box.c0 * this.cell;
+    this.shiftY = box.r0 * this.cell;
+    for (const node of net.nodes) {
+      node.cell = here(node.cell);
+      node.x += this.shiftX;
+      node.y += this.shiftY;
+    }
+    for (const stop of net.stops) {
+      stop.x += this.shiftX;
+      stop.y += this.shiftY;
+    }
+    for (const house of net.houses) house.cell = here(house.cell);
   }
 
   /** Match the canvas to its box on the page. Returns true if the size changed. */
@@ -336,7 +363,8 @@ export class MapView {
       ctx.moveTo(bx - nx * 1.25, by - ny * 1.25);
       ctx.lineTo(bx + nx * 1.25, by + ny * 1.25);
       ctx.strokeStyle = colours[light] ?? p.mark;
-      ctx.lineWidth = light === 0 ? Math.max(0.3, px) : Math.max(0.95, 3 * px);
+      ctx.lineWidth =
+        light === 0 ? Math.max(0.3, px) : Math.max(0.95, (this.scale < 1.5 ? 2 : 3) * px);
       ctx.stroke();
     }
     // A ring marks junctions that were given their own controller.
@@ -357,15 +385,17 @@ export class MapView {
     const detailed = this.scale > 2.2;
     const minWidth = Math.max(CAR_WIDTH, 2.2 * px);
     for (let i = 0; i < now.length; i += CAR_STRIDE) {
-      let x = now[i]!;
-      let y = now[i + 1]!;
+      let x = now[i]! + this.shiftX;
+      let y = now[i + 1]! + this.shiftY;
       let hx = now[i + 2]!;
       let hy = now[i + 3]!;
       const id = now[i + 6]!;
       const j = this.beforeAt.get(id);
       if (j !== undefined && blend < 1) {
-        x = before[j]! + (x - before[j]!) * blend;
-        y = before[j + 1]! + (y - before[j + 1]!) * blend;
+        const x0 = before[j]! + this.shiftX;
+        const y0 = before[j + 1]! + this.shiftY;
+        x = x0 + (x - x0) * blend;
+        y = y0 + (y - y0) * blend;
         hx = before[j + 2]! + (hx - before[j + 2]!) * blend;
         hy = before[j + 3]! + (hy - before[j + 3]!) * blend;
         const len = Math.hypot(hx, hy) || 1;

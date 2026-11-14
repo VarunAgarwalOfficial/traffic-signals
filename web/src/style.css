@@ -1131,9 +1131,15 @@ noscript {
     margin: 6px 3px;
   }
 
+  /* Pinching zooms on a phone; only the button that shows the whole map stays. */
   .zoom {
-    top: 68px;
+    top: 8px;
     right: 8px;
+  }
+
+  #zoom-in,
+  #zoom-out {
+    display: none;
   }
 
   .transport {

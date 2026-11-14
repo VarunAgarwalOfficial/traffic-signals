@@ -135,7 +135,7 @@ export class CompareView {
         host.append(figure);
         const view = new MapView(canvas, this.core.info.cell);
         view.scenario = scenario;
-        view.network = sim.network();
+        view.setNetwork(sim.network());
         view.resize();
         view.fit(0.6);
         this.tiles.push({ ...c, sim, view, readout });
@@ -338,7 +338,7 @@ export class CompareView {
     const columns: [string, (r: Row) => string][] = [
       ["Mean delay, s", (r) => cell(r, (m) => m.delay_all, 1)],
       ["Finished trips only, s", (r) => cell(r, (m) => m.delay_mean, 1)],
-      ["Worst 5% over, s", (r) => cell(r, (m) => m.delay_p95, 0)],
+      ["Slowest 5%, s", (r) => cell(r, (m) => m.delay_p95, 0)],
       ["Finished an hour", (r) => cell(r, (m) => m.throughput, 0)],
       ["Unfinished", (r) => cell(r, (m) => m.unfinished, 0)],
       ["Standing cars", (r) => cell(r, (m) => m.queue_mean, 1)],

@@ -122,10 +122,10 @@ export class BuildView {
     this.view.clearCars();
     try {
       this.sim = this.core.simulate(formatScenario(this.scenario), this.seed);
-      this.view.network = this.sim.network();
+      this.view.setNetwork(this.sim.network());
       this.pushFrame();
     } catch (error) {
-      this.view.network = null;
+      this.view.setNetwork(null);
       this.toast(error instanceof Error ? error.message : String(error));
     }
     this.owed = 0;
@@ -403,7 +403,7 @@ export class BuildView {
     $<HTMLSelectElement>("controller").addEventListener("change", (e) => {
       this.scenario.controller = (e.target as HTMLSelectElement).value;
       this.sim?.setController(this.scenario.controller);
-      if (this.sim) this.view.network = this.sim.network();
+      if (this.sim) this.view.setNetwork(this.sim.network());
       this.syncControls();
       this.renderInspector();
     });
@@ -457,7 +457,7 @@ export class BuildView {
         this.snapshot();
         if (this.apply(cell, false)) {
           this.stroke.changed = true;
-          this.view.network = null;
+          this.view.setNetwork(null);
           this.view.clearCars();
         } else {
           this.undoStack.pop();
@@ -500,7 +500,7 @@ export class BuildView {
       stroke.last = cell;
       if (changed) {
         stroke.changed = true;
-        this.view.network = null;
+        this.view.setNetwork(null);
         this.view.clearCars();
       } else if (!stroke.changed) {
         this.undoStack.pop();
@@ -530,11 +530,7 @@ export class BuildView {
       { passive: false },
     );
     canvas.addEventListener("focus", () => {
-      if (!canvas.matches(":focus-visible")) return;
-      if (this.view.cursor < 0) {
-        const box = canvas.getBoundingClientRect();
-        this.view.cursor = Math.max(0, this.view.cellAt(box.width / 2, box.height / 2));
-      }
+      if (canvas.matches(":focus-visible")) this.startCursor();
     });
     canvas.addEventListener("blur", () => {
       this.view.cursor = -1;
@@ -550,6 +546,13 @@ export class BuildView {
     });
   }
 
+  /** Put the keyboard cursor in the middle of the view if it is not on the map yet. */
+  private startCursor(): void {
+    if (this.view.cursor >= 0) return;
+    const box = this.view.canvas.getBoundingClientRect();
+    this.view.cursor = Math.max(0, this.view.cellAt(box.width / 2, box.height / 2));
+  }
+
   private key(e: KeyboardEvent): void {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const sc = this.scenario;
@@ -562,7 +565,8 @@ export class BuildView {
     };
     const move = moves[e.key];
     if (move) {
-      const at = Math.max(view.cursor, 0);
+      this.startCursor();
+      const at = view.cursor;
       const c = Math.min(sc.cols - 1, Math.max(0, (at % sc.cols) + move[0]));
       const r = Math.min(sc.rows - 1, Math.max(0, Math.floor(at / sc.cols) + move[1]));
       view.cursor = r * sc.cols + c;
