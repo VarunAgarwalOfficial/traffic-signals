@@ -69,8 +69,11 @@ export class BuildView {
     private readonly core: Core,
     scenario: Scenario,
     private readonly toast: (message: string) => void,
+    seed = 1,
   ) {
     this.scenario = scenario;
+    this.seed = seed;
+    $<HTMLInputElement>("seed").value = String(seed);
     this.view = new MapView($<HTMLCanvasElement>("map"), core.info.cell);
     this.view.showGrid = true;
     this.view.bottomInset = 64;

@@ -44,7 +44,7 @@ In the browser:
 - **Compare.** Runs the Build map under the ticked controllers with identical trips, side by side,
   and charts delay and throughput. "Repeat with 8 seeds" runs in the background and adds 95%
   intervals.
-- **Share** copies a link that holds the map, the demand and the controllers.
+- **Share** copies a link that holds the map, the demand, the controllers and the seed.
 - Keyboard: Tab to the map, arrow keys move a cursor, Enter uses the tool; V, R, H, E pick tools;
   P plays or pauses; `.` steps; `+`, `-`, `0` zoom.
 
@@ -103,15 +103,18 @@ How they differ: `2 sigmoid(x) - 1` is `tanh(x/2)`, so the sigmoid rule is a rel
 optimal-velocity models, applied to acceleration. It has no term for the open road, so the speed
 limit is enforced beside it, and it reacts to the gap only, where the Intelligent Driver Model
 also reacts to closing speed. The wanted gap here adds a braking-distance term the 2021 notes did
-not have; without it a car arriving at a standing queue reacts too late. In the sweeps both keep
-cars apart without the hard limit ever being needed.
+not have; without it a car arriving at a standing queue reacts too late. On the grid the two give similar
+pictures. With the sigmoid rule, fixed time has 97 ± 12 s of delay at 3500 trips an hour (82 ± 7
+with the Intelligent Driver Model) and actuated control 41.8 ± 2.2 s (41.3 ± 1.0); beyond capacity
+the sigmoid rule carries a few percent fewer cars (`results/grid-sigmoid.csv`). Neither ever needed
+the hard limit that stops one car entering another.
 
 **Junctions.** A car nearing a junction asks to enter when it is one comfortable braking distance
 away, and is refused (and stops at the line) unless all of these hold:
 
 - its signal is green, or the junction has none;
-- the lane it wants has room for it after everyone already let in (spillback: nobody stops inside
-  a junction);
+- the lane it wants has room for it after everyone already let in (spillback: no car enters a
+  junction without room to leave it);
 - every car already let in on a conflicting path will be clear before it gets there;
 - no car with right of way would reach the shared patch before it has cleared it (gap acceptance).
   Straight on beats a near-side turn beats a turn across oncoming traffic; among equals, first
@@ -186,8 +189,7 @@ Read against the published results:
 - **Max pressure keeps up where fixed time does not** (Varaiya 2013). At 4000 trips an hour max
   pressure finishes 3947 ± 49 an hour with 152 trips outstanding; fixed time finishes 3720 ± 41 and
   has 294 outstanding and growing. Other green times do not rescue fixed time: of 10, 20, 30 and
-  40 s the best at 4500 is 10 s with 238 ± 19 s of delay, against 166 ± 22 s for max pressure
-  (`results/grid-fixed-*.csv`).
+  40 s the best at 4000 is 10 s, which finishes 3782 ± 53 an hour (`results/grid-fixed-*.csv`).
 - **Plain max pressure fails when roads fill up, and capacity-aware pressure fixes it** (Gregoire
   et al. 2014). At 6500 capacity-aware pressure finishes 3990 ± 93 an hour against 3608 ± 124. In
   the town, jammed with 7000 trips an hour for 15 minutes and then left alone, capacity-aware
@@ -201,7 +203,9 @@ seeds. With rerouting off it emptied in 1 of 6: four full roads around a block, 
 turn into the next, stay that way for good. That is a property of one-lane roads with drivers who
 never change their minds, not a numerical accident, and the model still shows it if asked to.
 
-Across the 1730 runs in `results/` the overlap, red-light and hard-limit counts are all zero.
+Across the 2160 runs in `results/` no two cars overlapped and the hard limit was never used. One
+car crossed a stop line at red, in one of the 250 runs with the sigmoid rule (max pressure, 6500
+trips an hour); none did with the Intelligent Driver Model.
 
 **SUMO was not compared.** It is not installed on the machine this was built on, so there is no
 quantitative check against another simulator. These numbers describe this model, not a real city.

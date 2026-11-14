@@ -47,7 +47,9 @@ async function start(): Promise<void> {
   presetSelect.append(custom);
 
   let initial = parseScenario(presets[0]!.text);
-  const shared = new URLSearchParams(location.hash.slice(1)).get("s");
+  const link = new URLSearchParams(location.hash.slice(1));
+  const shared = link.get("s");
+  const seed = Math.min(999999, Math.max(1, Math.round(Number(link.get("seed")) || 1)));
   if (shared) {
     try {
       initial = parseScenario(await decodeShare(shared));
@@ -58,7 +60,7 @@ async function start(): Promise<void> {
     }
   }
 
-  const build = new BuildView(core, initial, toast);
+  const build = new BuildView(core, initial, toast, shared ? seed : 1);
   const compare = new CompareView(core, () => ({ scenario: build.scenario, seed: build.seed }));
 
   presetSelect.addEventListener("change", () => {
@@ -70,11 +72,12 @@ async function start(): Promise<void> {
 
   $("share").addEventListener("click", async () => {
     const code = await encodeShare(formatScenario(build.scenario));
-    const url = `${location.origin}${location.pathname}#s=${code}`;
-    history.replaceState(null, "", `#s=${code}`);
+    const hash = `#s=${code}&seed=${build.seed}`;
+    const url = `${location.origin}${location.pathname}${hash}`;
+    history.replaceState(null, "", hash);
     try {
       await navigator.clipboard.writeText(url);
-      toast("Link copied. It holds the map, the demand and the controller.");
+      toast("Link copied. It holds the map, the demand, the controllers and the seed.");
     } catch {
       toast("The link is in the address bar. Copy it from there.");
     }

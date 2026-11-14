@@ -11,7 +11,7 @@ $T --preset grid --demand 500:6500:500 $COMMON --out results/grid.csv
 $T --preset grid --demand 500:6500:1000 --reroute 0 $COMMON --out results/grid-no-reroute.csv
 # 3. Fixed time with other green times, so the baseline is not a straw man.
 for g in 10 30 40; do
-  $T --preset grid --controller fixed --param fixed.green=$g --demand 500:6500:1000 $COMMON --out results/grid-fixed-$g.csv
+  $T --preset grid --controller fixed --param fixed.green=$g --demand 500:6500:500 $COMMON --out results/grid-fixed-$g.csv
 done
 # 4. Self-organising lights with a lower threshold, closer to Gershenson's sotl-request.
 $T --preset grid --controller sotl --param sotl.theta=3 --param sotl.min_green=5 --demand 500:6500:1000 $COMMON --out results/grid-sotl-eager.csv
@@ -21,3 +21,5 @@ $T --preset arterial --demand 500:3500:1000 $COMMON --out results/arterial.csv
 # 6. Jam the town with twice what it can carry for 15 minutes, stop the demand, and see whether it empties.
 $T --preset town --demand 7000 --seeds 6 --duration 900 --warmup 0 --drain 7200 --format csv --out results/town-drain.csv
 $T --preset town --demand 7000 --seeds 6 --duration 900 --warmup 0 --drain 7200 --reroute 0 --format csv --out results/town-drain-no-reroute.csv
+# 7. The 2021 sigmoid following rule in place of the Intelligent Driver Model.
+$T --preset grid --follow sigmoid --demand 500:6500:1500 $COMMON --out results/grid-sigmoid.csv
