@@ -64,12 +64,12 @@ route alone at full speed, and time spent standing.
 
 | Cars per minute | Fixed: delay (s) | Adaptive: delay (s) | Fixed: finished | Adaptive: finished |
 | ---: | ---: | ---: | ---: | ---: |
-| 10 | 26.5 | 2.5 | 144 | 8 |
-| 20 | 28.6 | 4.0 | 310 | 13 |
-| 40 | 30.6 | 7.5 | 607 | 22 |
-| 60 | 40.9 | 16.2 | 865 | 49 |
-| 80 | 85.4 | 83.6 | 713 | 167 |
-| 100 | 181.6 | 160.5 | 659 | 155 |
+| 10 | 26.5 | 10.3 | 144 | 147 |
+| 20 | 28.6 | 12.7 | 310 | 315 |
+| 40 | 30.6 | 18.8 | 607 | 614 |
+| 60 | 40.9 | 31.9 | 865 | 890 |
+| 80 | 85.4 | 109.5 | 713 | 731 |
+| 100 | 181.6 | 191.2 | 659 | 592 |
 
 In light and medium traffic the adaptive rule cuts delay by a third to a half, because fixed
 signals hold cars at red for nobody. Once the roads are full it has no advantage and can do worse:
