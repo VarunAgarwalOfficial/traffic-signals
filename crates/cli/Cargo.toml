@@ -1,0 +1,8 @@
+[package]
+name = "traffic"
+description = "Command line for seeded traffic signal experiments."
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+traffic-core = { path = "../core" }

@@ -1,0 +1,11 @@
+[package]
+name = "traffic-wasm"
+description = "C-ABI WebAssembly interface to traffic-core."
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+traffic-core = { path = "../core" }

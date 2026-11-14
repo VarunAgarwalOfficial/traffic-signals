@@ -1,3 +1,6 @@
+target/
 node_modules/
 dist/
+web/public/traffic.wasm
 .env
+results/scratch/
