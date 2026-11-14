@@ -71,7 +71,8 @@ route alone at full speed, and time spent standing.
 |              80 |             85.4 |               109.5 |             713 |                731 |
 |             100 |            181.6 |               191.2 |             659 |                592 |
 
-In light and medium traffic the adaptive rule cuts delay by a third to a half, because fixed
+Up to 40 cars a minute the adaptive rule cuts delay by 40 to 60 percent, and by about a fifth at
+60, because fixed
 signals hold cars at red for nobody. Once the roads are full it has no advantage and can do worse:
 counting nearby cars says nothing useful when every approach is full, and the town locks up either
 way. These numbers describe this model, not a real city.
@@ -92,7 +93,7 @@ In the view: click a cell to add or remove a road; choose the house tool (or pre
 original) to add or remove houses. Signals appear wherever three or four roads meet. Change the
 controller, the number of cars per minute and the speed while it runs. "Compare controllers" runs
 ten simulated minutes of the current map under both controllers and shows the result.
-`npm run build` writes a static site to `dist/`. `PORT` sets the port (see `.env.example`).
+`npm run build` writes a static site to `dist/`. To use another port, run `PORT=4000 npm run dev` or copy `.env.example` to `.env`.
 
 ## Test
 
@@ -118,6 +119,9 @@ test/       tests for the core
 
 - Cars turning across oncoming traffic do not give way; they pass through each other inside the
   junction. Cars merging into the same exit do keep their distance.
+- Heavy traffic can lock a block for good: four full roads around it, each waiting to turn into
+  the next. The town does this under fixed-time signals at 120 cars a minute. "Remove cars" clears
+  it.
 - One lane each way, no overtaking, no pedestrians, cars are driven on the left.
 - A house on a junction cell or roads drawn as solid blocks work but look odd.
 

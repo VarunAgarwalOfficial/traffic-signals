@@ -130,8 +130,8 @@ test("a car stops at a red light by its own braking and goes on green", () => {
   assert.equal(sim.stats().arrived, 1);
 });
 
-for (const controller of controllers) {
-  test(`${controller.id}: no red light is run, no cars overlap, every car arrives`, () => {
+test("no red light is run, no cars overlap, every car arrives", () => {
+  for (const controller of controllers) {
     const world = parseWorld(maps.town!.text);
     const sim = new Simulation(world, controller);
     const trips = new TripSource(4).take(world, 70, 240);
@@ -140,8 +140,8 @@ for (const controller of controllers) {
     assert.deepEqual(watch(sim, world, 8400), { redRuns: 0, overlaps: 0, mergeOverlaps: 0 });
     const stats = sim.stats();
     assert.deepEqual([stats.arrived, stats.active, stats.queued], [trips.length, 0, 0]);
-  });
-}
+  }
+});
 
 test("editing the map updates signals and drops cars whose road is gone", () => {
   const world = parseWorld(maps.cross!.text);
