@@ -98,6 +98,9 @@ export class MapView {
     return changed;
   }
 
+  /** Pixels at the bottom of the canvas covered by controls; `fit` keeps the map clear of them. */
+  bottomInset = 0;
+
   /** Show everything drawn, with a margin. */
   fit(margin = 1.5): void {
     const sc = this.scenario;
@@ -105,9 +108,10 @@ export class MapView {
     const b = drawnBounds(sc) ?? { c0: 0, r0: 0, c1: sc.cols - 1, r1: sc.rows - 1 };
     const w = (b.c1 - b.c0 + 1 + 2 * margin) * this.cell;
     const h = (b.r1 - b.r0 + 1 + 2 * margin) * this.cell;
-    this.scale = Math.min(this.width / w, this.height / h, 6);
+    const height = this.height - this.bottomInset;
+    this.scale = Math.min(this.width / w, height / h, 6);
     this.ox = this.width / 2 - ((b.c0 + b.c1 + 1) / 2) * this.cell * this.scale;
-    this.oy = this.height / 2 - ((b.r0 + b.r1 + 1) / 2) * this.cell * this.scale;
+    this.oy = height / 2 - ((b.r0 + b.r1 + 1) / 2) * this.cell * this.scale;
   }
 
   zoomAt(factor: number, sx: number, sy: number): void {

@@ -1,5 +1,5 @@
 /** The Build view: draw the map, run the simulation, read the measurements. */
-import { lineChart } from "./charts.ts";
+import { lineChart, minuteTicks } from "./charts.ts";
 import { MapView, readPalette } from "./mapview.ts";
 import { EMPTY, formatScenario, HOUSE, ROAD, type Scenario } from "./scenario.ts";
 import { type Core, SERIES_STRIDE, type Simulation } from "./wasm.ts";
@@ -73,6 +73,7 @@ export class BuildView {
     this.scenario = scenario;
     this.view = new MapView($<HTMLCanvasElement>("map"), core.info.cell);
     this.view.showGrid = true;
+    this.view.bottomInset = 64;
     this.fillControls();
     this.bindControls();
     this.bindCanvas();
@@ -200,6 +201,7 @@ export class BuildView {
     lineChart(host, {
       series: [{ label: "Mean delay", colour: "var(--series-1)", points }],
       x: (v) => clock(v),
+      xTicks: minuteTicks,
       y: (v) => `${Math.round(v)} s`,
       height: 150,
       description: "Mean delay of trips finishing in each simulated minute.",
@@ -234,8 +236,7 @@ export class BuildView {
     if (cell < 0) return false;
     const was = sc.cells[cell];
     let next = was;
-    if (this.tool === "road")
-      next = was === EMPTY ? ROAD : dragging ? was : was === ROAD ? EMPTY : was;
+    if (this.tool === "road") next = was === EMPTY ? ROAD : was;
     else if (this.tool === "erase") next = EMPTY;
     else if (this.tool === "house" && !dragging)
       next = was === EMPTY ? HOUSE : was === HOUSE ? EMPTY : was;

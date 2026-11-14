@@ -124,6 +124,40 @@ pub fn run(scenario: &Scenario, seed: u64, duration: f64, warmup: f64) -> RunMet
     measure(&sim, seed)
 }
 
+/// What happened when the demand was switched off after a run.
+#[derive(Clone, Copy, Debug)]
+pub struct Drain {
+    pub seed: u64,
+    /// Cars on the road plus trips waiting at houses when the demand stopped.
+    pub jam: usize,
+    /// How many of them were still there at the end: zero unless the town locked up.
+    pub left: usize,
+    /// Seconds until the last one arrived (or the time allowed, if some never did).
+    pub seconds: f64,
+}
+
+/// Run `scenario` for `duration` seconds, stop the demand, and wait up to
+/// `allowed` seconds for the roads to empty.
+pub fn drain(scenario: &Scenario, seed: u64, duration: f64, allowed: f64) -> Drain {
+    let mut sim = Sim::new(scenario, seed);
+    for _ in 0..(duration / DT).round() as u64 {
+        sim.step();
+    }
+    let jam = sim.active() + sim.backlog();
+    sim.set_demand(0.0);
+    let mut steps = 0;
+    while sim.active() + sim.backlog() > 0 && (steps as f64) * DT < allowed {
+        sim.step();
+        steps += 1;
+    }
+    Drain {
+        seed,
+        jam,
+        left: sim.active() + sim.backlog(),
+        seconds: steps as f64 * DT,
+    }
+}
+
 /// Mean of a sample with the half-width of its 95% confidence interval.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Estimate {

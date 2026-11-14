@@ -17,8 +17,10 @@ export interface Scenario {
   weights: Map<number, number>;
   /** Per-junction controller by cell; "none" removes the signal. */
   junctions: Map<number, string>;
-  /** Lines this editor does not change (param and flow), kept as they came. */
-  extra: string[];
+  /** Controller settings this editor does not change, kept as `param` lines. */
+  params: string[];
+  /** Extra flows this editor does not change: origin cell, destination cell, trips per hour. */
+  flows: [number, number, number][];
 }
 
 /** The drawing area is at least this big, so there is room around a preset. */
@@ -39,9 +41,10 @@ export function parseScenario(text: string): Scenario {
   if (srcCols === 0 || map.some((l) => l.length !== srcCols)) {
     throw new Error("The map in this scenario is damaged.");
   }
-  if (srcCols > 120 || map.length > 120) throw new Error("The map is too large to edit here.");
-  const cols = Math.max(srcCols, MIN_COLS);
-  const rows = Math.max(map.length, MIN_ROWS);
+  if (srcCols > 200 || map.length > 200) throw new Error("The map is too large to edit here.");
+  // Leave a few empty cells around what was drawn.
+  const cols = Math.max(srcCols + 6, MIN_COLS);
+  const rows = Math.max(map.length + 6, MIN_ROWS);
   const dx = Math.floor((cols - srcCols) / 2);
   const dy = Math.floor((rows - map.length) / 2);
   const sc: Scenario = {
@@ -54,7 +57,8 @@ export function parseScenario(text: string): Scenario {
     reroute: 30,
     weights: new Map(),
     junctions: new Map(),
-    extra: [],
+    params: [],
+    flows: [],
   };
   map.forEach((line, r) => {
     [...line].forEach((ch, c) => {
@@ -66,10 +70,6 @@ export function parseScenario(text: string): Scenario {
     if (c === undefined || r === undefined || Number.isNaN(c) || Number.isNaN(r)) return -1;
     return (r + dy) * cols + c + dx;
   };
-  const shift = (word: string | undefined): string => {
-    const at = cell(word);
-    return `${at % cols},${Math.floor(at / cols)}`;
-  };
   for (const raw of lines.slice(1, mapAt)) {
     const w = (raw.split("#")[0] ?? "").trim().split(/\s+/);
     const value = Number(w[1]);
@@ -79,34 +79,42 @@ export function parseScenario(text: string): Scenario {
     else if (w[0] === "reroute" && value >= 0) sc.reroute = value;
     else if (w[0] === "house" && cell(w[1]) >= 0) sc.weights.set(cell(w[1]), Number(w[2]) || 1);
     else if (w[0] === "junction" && w[2] && cell(w[1]) >= 0) sc.junctions.set(cell(w[1]), w[2]);
-    else if (w[0] === "param" && w.length === 3) sc.extra.push(w.join(" "));
-    else if (w[0] === "flow" && w.length === 4) {
-      sc.extra.push(`flow ${shift(w[1])} ${shift(w[2])} ${w[3]}`);
+    else if (w[0] === "param" && w.length === 3) sc.params.push(w.join(" "));
+    else if (w[0] === "flow" && cell(w[1]) >= 0 && cell(w[2]) >= 0 && Number(w[3]) >= 0) {
+      sc.flows.push([cell(w[1]), cell(w[2]), Number(w[3])]);
     }
   }
   return sc;
 }
 
+/** The scenario as text, cut down to the part of the grid that is drawn on. */
 export function formatScenario(sc: Scenario, controller = sc.controller): string {
-  const at = (cell: number) => `${cell % sc.cols},${Math.floor(cell / sc.cols)}`;
+  const box = drawnBounds(sc) ?? { c0: 0, r0: 0, c1: 0, r1: 0 };
+  const at = (cell: number) =>
+    `${(cell % sc.cols) - box.c0},${Math.floor(cell / sc.cols) - box.r0}`;
   const out = [
     "traffic-scenario 1",
     `controller ${controller}`,
     `follow ${sc.follow}`,
     `demand ${sc.demand}`,
     `reroute ${sc.reroute}`,
-    ...sc.extra,
+    ...sc.params,
   ];
   for (const [cell, weight] of sc.weights) {
     if (sc.cells[cell] === HOUSE && weight !== 1) out.push(`house ${at(cell)} ${weight}`);
+  }
+  for (const [from, to, rate] of sc.flows) {
+    if (sc.cells[from] === HOUSE && sc.cells[to] === HOUSE) {
+      out.push(`flow ${at(from)} ${at(to)} ${rate}`);
+    }
   }
   for (const [cell, id] of sc.junctions) {
     if (sc.cells[cell] === ROAD) out.push(`junction ${at(cell)} ${id}`);
   }
   out.push("map");
-  for (let r = 0; r < sc.rows; r++) {
+  for (let r = box.r0; r <= box.r1; r++) {
     let line = "";
-    for (let c = 0; c < sc.cols; c++) {
+    for (let c = box.c0; c <= box.c1; c++) {
       const v = sc.cells[r * sc.cols + c];
       line += v === ROAD ? "#" : v === HOUSE ? "H" : ".";
     }

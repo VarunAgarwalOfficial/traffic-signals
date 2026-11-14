@@ -1,6 +1,6 @@
 /** The Compare view: the same seeded traffic under several controllers, side by side. */
 import { clock, delayPerMinute } from "./build.ts";
-import { type Bar, barChart, estimate, lineChart, type Series } from "./charts.ts";
+import { type Bar, barChart, estimate, lineChart, minuteTicks, type Series } from "./charts.ts";
 import { MapView, readPalette } from "./mapview.ts";
 import { formatScenario, type Scenario } from "./scenario.ts";
 import type { ControllerInfo, Core, Metrics, Simulation } from "./wasm.ts";
@@ -272,7 +272,8 @@ export class CompareView {
         (m) => m.delay_all,
         (r) => `${mean(r, (m) => m.unfinished).toFixed(0)} trips unfinished at the end`,
       ),
-      format: (v) => `${v.toFixed(v < 10 ? 1 : 0)} s`,
+      format: (v) => v.toFixed(v < 10 ? 1 : 0),
+      unit: " s",
       description: "Mean delay per trip for each controller.",
     });
     barChart($("chart-flow"), {
@@ -300,6 +301,7 @@ export class CompareView {
       lineChart($("chart-time"), {
         series,
         x: (v) => clock(v),
+        xTicks: minuteTicks,
         y: (v) => `${Math.round(v)} s`,
         shadeBelow: this.duration / 4,
         shadeLabel: "warm-up",

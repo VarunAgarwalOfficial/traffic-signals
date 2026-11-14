@@ -777,10 +777,11 @@ impl Sim {
             Light::Amber => {
                 // A car that has been waiting at the line for a gap may still go
                 // early in the amber, once the traffic it gave way to has stopped.
+                // It must be close enough to be over the line before the red.
                 let early = self.signals[mv.node]
                     .as_ref()
-                    .is_some_and(|s| s.elapsed < 2.0);
-                if !(early && c.v < 1.0 && dist < 2.5) {
+                    .is_some_and(|s| s.elapsed < 1.5);
+                if !(early && c.v < 1.0 && dist < 1.2) {
                     return Verdict::Wait;
                 }
             }

@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use traffic_core::control::CONTROLLERS;
 use traffic_core::follow::FollowModel;
-use traffic_core::metrics::{estimate, run, RunMetrics, METRIC_NAMES};
+use traffic_core::metrics::{drain, estimate, run, Drain, RunMetrics, METRIC_NAMES};
 use traffic_core::scenario::{preset, Scenario, PRESETS};
 
 const HELP: &str = "\
@@ -25,6 +25,8 @@ usage: traffic [options]
   --follow MODEL       idm or sigmoid (default: the scenario's)
   --reroute SECONDS    how long a blocked driver waits before trying another way; 0 = never
   --param KEY=VALUE    controller setting, e.g. fixed.green=30 (repeatable)
+  --drain SECONDS      instead of measuring, stop the demand after each run and report
+                       how long the roads take to empty, waiting at most this long
   --format FORMAT      table, csv or json (default table)
   --runs               with csv: one row per run instead of one per setting
   --out PATH           write to a file instead of standard output
@@ -45,6 +47,7 @@ struct Options {
     warmup: f64,
     format: String,
     per_run: bool,
+    drain: Option<f64>,
     out: Option<String>,
     threads: usize,
 }
@@ -78,7 +81,7 @@ fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
     let mut params: Vec<(String, f64)> = vec![];
     let (mut seeds, mut duration, mut warmup, mut threads) = (5u64, 1200.0, 300.0, 4usize);
     let mut format = "table".to_string();
-    let (mut per_run, mut out) = (false, None);
+    let (mut per_run, mut out, mut drain_for) = (false, None, None);
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         let mut value = || it.next().cloned().ok_or(format!("{arg} needs a value"));
@@ -115,6 +118,7 @@ fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
             }
             "--format" => format = value()?,
             "--runs" => per_run = true,
+            "--drain" => drain_for = Some(number(value()?)?),
             "--out" => out = Some(value()?),
             "--threads" => threads = number(value()?)? as usize,
             other => return Err(format!("unknown option `{other}` (try --help)")),
@@ -155,6 +159,9 @@ fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
     if !matches!(format.as_str(), "table" | "csv" | "json") {
         return Err("--format takes table, csv or json".into());
     }
+    if drain_for.is_some() && format == "json" {
+        return Err("--drain writes a table or csv".into());
+    }
     if seeds == 0 || duration <= warmup {
         return Err("need at least one seed and a duration longer than the warm-up".into());
     }
@@ -168,6 +175,7 @@ fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
         warmup,
         format,
         per_run,
+        drain: drain_for,
         out,
         threads: threads.clamp(1, 4),
     }))
@@ -223,6 +231,69 @@ fn run_all(o: &Options) -> Vec<Setting> {
         }
     }
     settings
+}
+
+/// The drain experiment: one line per run, as a table or CSV.
+fn drain_all(o: &Options, allowed: f64) -> String {
+    let mut jobs = Vec::new();
+    for controller in &o.controllers {
+        for &demand in &o.demands {
+            for seed in 1..=o.seeds {
+                jobs.push((controller.clone(), demand, seed));
+            }
+        }
+    }
+    let next = AtomicUsize::new(0);
+    let done: Mutex<BTreeMap<usize, Drain>> = Mutex::new(BTreeMap::new());
+    std::thread::scope(|scope| {
+        for _ in 0..o.threads.min(jobs.len()) {
+            scope.spawn(|| loop {
+                let k = next.fetch_add(1, Ordering::Relaxed);
+                let Some((controller, demand, seed)) = jobs.get(k) else {
+                    break;
+                };
+                let mut scenario = o.scenario.clone();
+                scenario.controller = controller.clone();
+                scenario.demand = *demand;
+                let result = drain(&scenario, *seed, o.duration, allowed);
+                done.lock().expect("no worker panics").insert(k, result);
+            });
+        }
+    });
+    let done = done.into_inner().expect("no worker panics");
+    let csv = o.format == "csv";
+    let mut out = String::new();
+    if csv {
+        out.push_str("scenario,controller,demand,seed,jam,left,drain_seconds\n");
+    } else {
+        let _ = writeln!(
+            out,
+            "{}: demand for {} s, then none; up to {} s to empty\n\n{:<15} {:>6} {:>5} {:>6} {:>6} {:>8}",
+            o.name, o.duration, allowed, "controller", "demand", "seed", "jam", "left", "empty in"
+        );
+    }
+    for (k, d) in done {
+        let (controller, demand, _) = &jobs[k];
+        if csv {
+            let _ = writeln!(
+                out,
+                "{},{},{},{},{},{},{:.1}",
+                o.name, controller, demand, d.seed, d.jam, d.left, d.seconds
+            );
+        } else {
+            let time = if d.left == 0 {
+                format!("{:.0} s", d.seconds)
+            } else {
+                "never".into()
+            };
+            let _ = writeln!(
+                out,
+                "{:<15} {:>6} {:>5} {:>6} {:>6} {:>8}",
+                controller, demand, d.seed, d.jam, d.left, time
+            );
+        }
+    }
+    out
 }
 
 fn num(v: f64) -> String {
@@ -385,7 +456,10 @@ fn main() {
             std::process::exit(2);
         }
     };
-    let text = render(&options, &run_all(&options));
+    let text = match options.drain {
+        Some(allowed) => drain_all(&options, allowed),
+        None => render(&options, &run_all(&options)),
+    };
     match &options.out {
         Some(path) => {
             if let Err(e) = std::fs::write(path, text) {

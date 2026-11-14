@@ -18,3 +18,6 @@ $T --preset grid --controller sotl --param sotl.theta=3 --param sotl.min_green=5
 # 5. The town and the arterial.
 $T --preset town --demand 500:4500:1000 $COMMON --out results/town.csv
 $T --preset arterial --demand 500:3500:1000 $COMMON --out results/arterial.csv
+# 6. Jam the town with twice what it can carry for 15 minutes, stop the demand, and see whether it empties.
+$T --preset town --demand 7000 --seeds 6 --duration 900 --warmup 0 --drain 7200 --format csv --out results/town-drain.csv
+$T --preset town --demand 7000 --seeds 6 --duration 900 --warmup 0 --drain 7200 --reroute 0 --format csv --out results/town-drain-no-reroute.csv

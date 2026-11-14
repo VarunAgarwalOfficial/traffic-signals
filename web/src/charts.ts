@@ -24,6 +24,14 @@ function ticks(max: number, count: number): number[] {
   return out;
 }
 
+/** Axis steps for a time in seconds: whole minutes. */
+export function minuteTicks(max: number, count: number): number[] {
+  const step = [60, 120, 300, 600, 900, 1800, 3600].find((s) => max / s <= count) ?? 7200;
+  const out: number[] = [];
+  for (let v = 0; v <= max; v += step) out.push(v);
+  return out;
+}
+
 export interface Series {
   label: string;
   /** A CSS colour, usually a custom property. */
@@ -36,6 +44,8 @@ export interface LineOptions {
   /** Formats an x value (seconds) and a y value for axis labels and the tooltip. */
   x: (v: number) => string;
   y: (v: number) => string;
+  /** Positions of the x axis labels; by default round numbers. */
+  xTicks?: (max: number, count: number) => number[];
   /** Shade x values below this, to show a period that is not measured. */
   shadeBelow?: number;
   shadeLabel?: string;
@@ -70,7 +80,7 @@ export function lineChart(host: HTMLElement, o: LineOptions): void {
   const xMax = Math.max(1, ...all.map((p) => p[0]));
   const yTicks = ticks(Math.max(1, ...all.map((p) => p[1])), 4);
   const yMax = yTicks[yTicks.length - 1] ?? 1;
-  const xTicks = ticks(xMax, width < 420 ? 3 : 6).filter((t) => t <= xMax);
+  const xTicks = (o.xTicks ?? ticks)(xMax, width < 420 ? 3 : 6).filter((t) => t <= xMax);
   const sx = (v: number) => m.left + (v / xMax) * (width - m.left - m.right);
   const sy = (v: number) => height - m.bottom - (v / yMax) * (height - m.top - m.bottom);
 
@@ -178,14 +188,19 @@ export interface Bar {
 export interface BarOptions {
   bars: Bar[];
   format: (v: number) => string;
+  /** Written once after the value and its interval, such as " s". */
+  unit?: string;
   description: string;
 }
 
 export function barChart(host: HTMLElement, o: BarOptions): void {
   const width = Math.max(host.clientWidth, 240);
-  const row = 30;
-  const labelWidth = Math.min(170, Math.max(96, width * 0.32));
-  const valueWidth = 96;
+  // On a narrow chart the name goes on its own line above the bar.
+  const stacked = width < 440;
+  const row = stacked ? 46 : 30;
+  const top = stacked ? 18 : 0;
+  const labelWidth = stacked ? 0 : Math.min(190, Math.max(120, width * 0.32));
+  const valueWidth = 112;
   const height = o.bars.length * row + 6;
   const max = Math.max(1e-9, ...o.bars.map((b) => b.value + (b.interval ?? 0)));
   const span = width - labelWidth - valueWidth;
@@ -194,10 +209,10 @@ export function barChart(host: HTMLElement, o: BarOptions): void {
   svg.setAttribute("aria-label", o.description);
   const tip = tooltip(host);
   o.bars.forEach((b, i) => {
-    const y = i * row + 4;
+    const y = i * row + 4 + top;
     const g = el("g", { class: "bar" });
-    g.append(el("rect", { x: 0, y, width, height: row - 2, class: "hit" }));
-    g.append(el("text", { x: 0, y: y + 18, class: "label" }, b.label));
+    g.append(el("rect", { x: 0, y: y - top, width, height: row - 2, class: "hit" }));
+    g.append(el("text", { x: 0, y: stacked ? y - 2 : y + 18, class: "label" }, b.label));
     const w = Math.max(2, sx(b.value) - labelWidth);
     // Square at the baseline, rounded at the data end.
     const r = Math.min(4, w);
@@ -218,8 +233,8 @@ export function barChart(host: HTMLElement, o: BarOptions): void {
     }
     const text =
       b.interval !== undefined && Number.isFinite(b.interval)
-        ? `${o.format(b.value)} ± ${o.format(b.interval)}`
-        : o.format(b.value);
+        ? `${o.format(b.value)} ± ${o.format(b.interval)}${o.unit ?? ""}`
+        : `${o.format(b.value)}${o.unit ?? ""}`;
     g.append(el("text", { x: end + 8, y: y + 18, class: "value" }, text));
     g.addEventListener("pointermove", (e) => {
       const box = svg.getBoundingClientRect();
