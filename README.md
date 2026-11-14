@@ -50,10 +50,10 @@ almost never needed and the simulation counts when it is.
 2 s all red, then the other axis. On amber a driver stops if that takes no more than 4 m/s^2 of
 braking. A car does not enter a junction while its exit is jammed.
 
-| Controller | Rule |
-| --- | --- |
-| Fixed time | 20 s of green for each axis in turn. |
-| Adaptive | Counts cars within four cells of the junction on each axis. After 6 s of green it switches when the red side has at least twice as many cars as the green side (so also when the green side is empty), or after 45 s if anyone is waiting. With nobody waiting it stays green. |
+| Controller | Rule                                                                                                                                                                                                                                                                           |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Fixed time | 20 s of green for each axis in turn.                                                                                                                                                                                                                                           |
+| Adaptive   | Counts cars within four cells of the junction on each axis. After 6 s of green it switches when the red side has at least twice as many cars as the green side (so also when the green side is empty), or after 45 s if anyone is waiting. With nobody waiting it stays green. |
 
 **Measured** per finished trip: travel time from request to arrival, delay against driving the
 route alone at full speed, and time spent standing.
@@ -63,13 +63,13 @@ route alone at full speed, and time spent standing.
 `npm run compare -- --sweep` on the default town (nine junctions, 15 simulated minutes, seed 1):
 
 | Cars per minute | Fixed: delay (s) | Adaptive: delay (s) | Fixed: finished | Adaptive: finished |
-| ---: | ---: | ---: | ---: | ---: |
-| 10 | 26.5 | 10.3 | 144 | 147 |
-| 20 | 28.6 | 12.7 | 310 | 315 |
-| 40 | 30.6 | 18.8 | 607 | 614 |
-| 60 | 40.9 | 31.9 | 865 | 890 |
-| 80 | 85.4 | 109.5 | 713 | 731 |
-| 100 | 181.6 | 191.2 | 659 | 592 |
+| --------------: | ---------------: | ------------------: | --------------: | -----------------: |
+|              10 |             26.5 |                10.3 |             144 |                147 |
+|              20 |             28.6 |                12.7 |             310 |                315 |
+|              40 |             30.6 |                18.8 |             607 |                614 |
+|              60 |             40.9 |                31.9 |             865 |                890 |
+|              80 |             85.4 |               109.5 |             713 |                731 |
+|             100 |            181.6 |               191.2 |             659 |                592 |
 
 In light and medium traffic the adaptive rule cuts delay by a third to a half, because fixed
 signals hold cars at red for nobody. Once the roads are full it has no advantage and can do worse:
