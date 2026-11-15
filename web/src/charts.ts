@@ -37,6 +37,18 @@ export interface Series {
   /** A CSS colour, usually a custom property. */
   colour: string;
   points: [number, number][];
+  /** Drawn dashed, for a series sharing its colour with another. */
+  dashed?: boolean;
+}
+
+/** A key square for a series: filled, or outlined for one drawn dashed or hollow. */
+export function paintKey(key: HTMLElement, mark: { colour: string; hollow?: boolean }): void {
+  if (mark.hollow) {
+    key.classList.add("hollow");
+    key.style.color = mark.colour;
+  } else {
+    key.style.background = mark.colour;
+  }
 }
 
 export interface LineOptions {
@@ -74,11 +86,13 @@ function placeTip(host: HTMLElement, tip: HTMLElement, x: number, y: number): vo
 
 export function lineChart(host: HTMLElement, o: LineOptions): void {
   const width = Math.max(host.clientWidth, 240);
-  const height = o.height ?? 220;
-  const m = { top: 12, right: 14, bottom: 26, left: 44 };
+  const height = o.height ?? 240;
   const all = o.series.flatMap((s) => s.points);
   const xMax = Math.max(1, ...all.map((p) => p[0]));
   const yTicks = ticks(Math.max(1, ...all.map((p) => p[1])), 4);
+  // Labels are at the text size: room on the left for the longest (a figure is about 9 px).
+  const longest = Math.max(...yTicks.map((t) => o.y(t).length));
+  const m = { top: 14, right: 18, bottom: 34, left: longest * 9 + 14 };
   const yMax = yTicks[yTicks.length - 1] ?? 1;
   const xTicks = (o.xTicks ?? ticks)(xMax, width < 420 ? 3 : 6).filter((t) => t <= xMax);
   const sx = (v: number) => m.left + (v / xMax) * (width - m.left - m.right);
@@ -97,14 +111,14 @@ export function lineChart(host: HTMLElement, o: LineOptions): void {
         class: "shade",
       }),
     );
-    if (o.shadeLabel && w > 70) {
-      svg.append(el("text", { x: m.left + 6, y: m.top + 12, class: "axis" }, o.shadeLabel));
+    if (o.shadeLabel && w > o.shadeLabel.length * 8 + 12) {
+      svg.append(el("text", { x: m.left + 6, y: m.top + 18, class: "axis" }, o.shadeLabel));
     }
   }
   for (const t of yTicks) {
     svg.append(
       el("line", { x1: m.left, x2: width - m.right, y1: sy(t), y2: sy(t), class: "grid" }),
-      el("text", { x: m.left - 8, y: sy(t) + 4, "text-anchor": "end", class: "axis" }, o.y(t)),
+      el("text", { x: m.left - 8, y: sy(t) + 6, "text-anchor": "end", class: "axis" }, o.y(t)),
     );
   }
   for (const t of xTicks) {
@@ -117,7 +131,7 @@ export function lineChart(host: HTMLElement, o: LineOptions): void {
     const d = s.points.map(
       (p, i) => `${i ? "L" : "M"}${sx(p[0]).toFixed(1)},${sy(p[1]).toFixed(1)}`,
     );
-    const path = el("path", { d: d.join(""), class: "line" });
+    const path = el("path", { d: d.join(""), class: s.dashed ? "line dashed" : "line" });
     path.style.stroke = s.colour;
     svg.append(path);
     const last = s.points[s.points.length - 1]!;
@@ -159,7 +173,7 @@ export function lineChart(host: HTMLElement, o: LineOptions): void {
     for (const r of rows) {
       const row = document.createElement("span");
       const key = document.createElement("i");
-      key.style.background = r.s.colour;
+      paintKey(key, { colour: r.s.colour, hollow: r.s.dashed });
       row.append(
         key,
         `${r.s.label}`,
@@ -183,6 +197,8 @@ export interface Bar {
   interval?: number;
   /** Extra line for the tooltip. */
   note?: string;
+  /** Drawn as an outline, for a bar sharing its colour with another. */
+  hollow?: boolean;
 }
 
 export interface BarOptions {
@@ -196,11 +212,11 @@ export interface BarOptions {
 export function barChart(host: HTMLElement, o: BarOptions): void {
   const width = Math.max(host.clientWidth, 240);
   // On a narrow chart the name goes on its own line above the bar.
-  const stacked = width < 440;
-  const row = stacked ? 46 : 30;
-  const top = stacked ? 18 : 0;
-  const labelWidth = stacked ? 0 : Math.min(190, Math.max(120, width * 0.32));
-  const valueWidth = 112;
+  const stacked = width < 560;
+  const row = stacked ? 54 : 36;
+  const top = stacked ? 22 : 0;
+  const labelWidth = stacked ? 0 : Math.min(220, Math.max(190, width * 0.3));
+  const valueWidth = 170;
   const height = o.bars.length * row + 6;
   const max = Math.max(1e-9, ...o.bars.map((b) => b.value + (b.interval ?? 0)));
   const span = width - labelWidth - valueWidth;
@@ -212,15 +228,18 @@ export function barChart(host: HTMLElement, o: BarOptions): void {
     const y = i * row + 4 + top;
     const g = el("g", { class: "bar" });
     g.append(el("rect", { x: 0, y: y - top, width, height: row - 2, class: "hit" }));
-    g.append(el("text", { x: 0, y: stacked ? y - 2 : y + 18, class: "label" }, b.label));
+    g.append(el("text", { x: 0, y: stacked ? y - 4 : y + 17, class: "label" }, b.label));
     const w = Math.max(2, sx(b.value) - labelWidth);
-    // Square at the baseline, rounded at the data end.
-    const r = Math.min(4, w);
-    const path = el("path", {
-      d: `M${labelWidth},${y + 4}h${w - r}a${r},${r} 0 0 1 ${r},${r}v${14 - 2 * r}a${r},${r} 0 0 1 ${-r},${r}h${r - w}z`,
-    });
-    path.style.fill = b.colour;
-    g.append(path);
+    const bar = b.hollow
+      ? el("rect", { x: labelWidth + 1, y: y + 5, width: Math.max(w - 2, 2), height: 12 })
+      : el("rect", { x: labelWidth, y: y + 4, width: w, height: 14 });
+    if (b.hollow) {
+      bar.setAttribute("class", "hollow");
+      bar.style.stroke = b.colour;
+    } else {
+      bar.style.fill = b.colour;
+    }
+    g.append(bar);
     let end = sx(b.value);
     if (b.interval !== undefined && Number.isFinite(b.interval)) {
       const lo = sx(Math.max(0, b.value - b.interval));
@@ -235,7 +254,7 @@ export function barChart(host: HTMLElement, o: BarOptions): void {
       b.interval !== undefined && Number.isFinite(b.interval)
         ? `${o.format(b.value)} ± ${o.format(b.interval)}${o.unit ?? ""}`
         : `${o.format(b.value)}${o.unit ?? ""}`;
-    g.append(el("text", { x: end + 8, y: y + 18, class: "value" }, text));
+    g.append(el("text", { x: end + 8, y: y + 17, class: "value" }, text));
     g.addEventListener("pointermove", (e) => {
       const box = svg.getBoundingClientRect();
       tip.replaceChildren();

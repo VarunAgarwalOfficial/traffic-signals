@@ -241,11 +241,48 @@ crates/core/   the simulation library, no dependencies
 crates/cli/    the `traffic` command
 crates/wasm/   C-ABI exports for the browser (no wasm-bindgen)
 web/           Vite and TypeScript: canvas map, editor, compare view, charts
+web/src/c-editorial-tokens.css   the site's tokens; web/public/fonts the fonts they name
 scripts/       validate.sh, same-in-browser.mjs
 results/       output of validate.sh
 ```
 
-The interface font is IBM Plex Sans, under the SIL Open Font License (`web/src/fonts/OFL.txt`).
+## The look
+
+The page uses the look of the author's site. `web/src/c-editorial-tokens.css` is the site's token
+file, copied unchanged, and `web/src/style.css` gives this page's own names (`--ink`, `--go`,
+`--series-1` and so on) the token values. The fonts the token file names are in `web/public/fonts`
+with their licences; the text is Newsreader, under the SIL Open Font License
+(`web/public/fonts/Newsreader-OFL.txt`). Dark follows the system setting.
+
+The site has four meaning colours, used the same way in all the author's tools:
+
+| Meaning colour | In the tools generally | Here |
+| --- | --- | --- |
+| proved (green) | finished, the answer; series 4 | green signal; max pressure |
+| measured (ochre) | being read or compared; series 3 | amber signal; self-organising |
+| against (red) | written, moved, wrong; series 2 | red signal, brake lights; actuated |
+| open (violet) | the current item; series 1 | the chosen square, junctions with their own controller; fixed time |
+
+There are five controllers and four colours, so capacity-aware pressure takes the colour of max
+pressure, which it refines, and is drawn as a hollow bar, a dashed line and an outlined key.
+Roads are now the page colour inside a kerb in the muted ink, so each signal sits on the page
+colour; houses are filled in the muted ink. Cars are still each a different colour, but those
+colours are the ink, the muted ink and the ink with each meaning colour mixed in, so no car reads
+as a signal.
+
+Removed: IBM Plex Sans, the blue accent and the old palette, the theme override, every shadow
+(buttons, tooltip, slider), the gradient arrow on lists, the pill and rounded shapes, the filled
+"pressed" tool (now a heavier ink edge), the tile and map boxes (now rules), bold figures and the
+button transitions. Moved because text is now 17 px or more: map labels need their own width
+before they are placed, a house's weight shows only once the house is 56 px wide (was 26), bar
+chart rows grew from 30 to 36 px (54 when the name sits above the bar, now below 560 px wide
+rather than 440), the value column from 112 to 170 px, line charts from 220 to 240 px with a left
+margin that follows the widest label, and controls grew from 36 to 44 px.
+
+Contrast, checked with the WCAG 2 formula on the token values: text 15.1 to 1 light and 13.8 dark,
+muted text 5.9 and 7.1; the signal and series colours against the page, which is also the road,
+4.9 to 6.1 light and 6.8 to 7.8 dark; cars 5.9 to 15.1 light and 7.1 to 13.8 dark; houses and kerbs
+5.9 and 7.1.
 
 ## References
 

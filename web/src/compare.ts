@@ -1,6 +1,14 @@
 /** The Compare view: the same seeded traffic under several controllers, side by side. */
 import { clock, delayPerMinute } from "./build.ts";
-import { type Bar, barChart, estimate, lineChart, minuteTicks, type Series } from "./charts.ts";
+import {
+  type Bar,
+  barChart,
+  estimate,
+  lineChart,
+  minuteTicks,
+  paintKey,
+  type Series,
+} from "./charts.ts";
 import { MapView, readPalette } from "./mapview.ts";
 import { formatScenario, type Scenario } from "./scenario.ts";
 import type { ControllerInfo, Core, Metrics, Simulation } from "./wasm.ts";
@@ -10,10 +18,20 @@ const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) 
 const SEEDS = 8;
 /** Simulated seconds advanced per real second while tiles animate. */
 const PLAYBACK = 60;
+/**
+ * How a controller is drawn: the site has four meaning colours and there are five controllers,
+ * so the fifth, capacity-aware pressure, takes the colour of max pressure, which it refines, and
+ * is drawn hollow and dashed.
+ */
+const markOf = (i: number): { colour: string; hollow: boolean } => ({
+  colour: `var(--series-${Math.min(i, 3) + 1})`,
+  hollow: i > 3,
+});
 
 interface Tile {
   info: ControllerInfo;
   colour: string;
+  hollow: boolean;
   sim: Simulation;
   view: MapView;
   readout: HTMLElement;
@@ -22,6 +40,7 @@ interface Tile {
 interface Row {
   info: ControllerInfo;
   colour: string;
+  hollow: boolean;
   runs: Metrics[];
 }
 
@@ -52,7 +71,7 @@ export class CompareView {
       box.value = c.id;
       box.checked = true;
       const key = document.createElement("i");
-      key.style.background = `var(--series-${i + 1})`;
+      paintKey(key, markOf(i));
       label.append(box, key, c.label);
       host.append(label);
     });
@@ -88,10 +107,10 @@ export class CompareView {
     this.renderResults();
   }
 
-  private chosen(): { info: ControllerInfo; colour: string }[] {
+  private chosen(): { info: ControllerInfo; colour: string; hollow: boolean }[] {
     const boxes = [...document.querySelectorAll<HTMLInputElement>("#compare-controllers input")];
     return this.core.info.controllers
-      .map((info, i) => ({ info, colour: `var(--series-${i + 1})`, on: boxes[i]?.checked }))
+      .map((info, i) => ({ info, ...markOf(i), on: boxes[i]?.checked }))
       .filter((c) => c.on);
   }
 
@@ -131,7 +150,7 @@ export class CompareView {
         figure.className = "tile";
         const caption = document.createElement("figcaption");
         const key = document.createElement("i");
-        key.style.background = c.colour;
+        paintKey(key, c);
         const name = document.createElement("strong");
         name.textContent = c.info.label;
         const readout = document.createElement("span");
@@ -153,7 +172,12 @@ export class CompareView {
       this.status(error instanceof Error ? error.message : String(error));
       return;
     }
-    this.rows = this.tiles.map((t) => ({ info: t.info, colour: t.colour, runs: [] }));
+    this.rows = this.tiles.map((t) => ({
+      info: t.info,
+      colour: t.colour,
+      hollow: t.hollow,
+      runs: [],
+    }));
     this.running = true;
     $("compare-results").hidden = false;
     this.collectLive();
@@ -279,6 +303,7 @@ export class CompareView {
         return {
           label: r.info.label,
           colour: r.colour,
+          hollow: r.hollow,
           value: e.mean,
           interval: r.runs.length > 1 ? e.interval : undefined,
           note: note(r),
@@ -314,6 +339,7 @@ export class CompareView {
       const series: Series[] = this.tiles.map((t) => ({
         label: t.info.label,
         colour: t.colour,
+        dashed: t.hollow,
         points: delayPerMinute(t.sim.series()),
       }));
       lineChart($("chart-time"), {
@@ -331,7 +357,7 @@ export class CompareView {
         ...this.tiles.map((t) => {
           const item = document.createElement("span");
           const key = document.createElement("i");
-          key.style.background = t.colour;
+          paintKey(key, t);
           item.append(key, t.info.label);
           return item;
         }),
@@ -374,7 +400,7 @@ export class CompareView {
       const th = document.createElement("th");
       th.scope = "row";
       const key = document.createElement("i");
-      key.style.background = r.colour;
+      paintKey(key, r);
       th.append(key, r.info.label);
       tr.append(th);
       for (const [, value] of columns) {

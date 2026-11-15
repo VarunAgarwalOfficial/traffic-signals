@@ -32,7 +32,7 @@ export function readPalette(): Palette {
     house: v("--map-house"),
     roof: v("--map-roof"),
     ink: v("--ink"),
-    accent: v("--accent"),
+    accent: v("--map-accent"),
     green: v("--go"),
     amber: v("--amber"),
     red: v("--stop"),
@@ -41,6 +41,8 @@ export function readPalette(): Palette {
   };
 }
 
+/** The page's typeface at its smallest size, for every label on the map. */
+const FONT = `17px "Newsreader", "CM Web Serif", Georgia, serif`;
 const ROAD_WIDTH = 8.6;
 const CAR_LENGTH = 4.5;
 const CAR_WIDTH = 1.8;
@@ -216,8 +218,10 @@ export class MapView {
   /** Screen-space names for one house and one signalled junction, with a halo so they read over roads. */
   private drawLabels(sc: Scenario): void {
     const { ctx, cell, palette: p } = this;
+    ctx.font = FONT;
+    const room = (text: string) => ctx.measureText(text).width + 4;
     const name = (text: string, x: number, y: number) => {
-      ctx.font = `500 12px "IBM Plex Sans", system-ui, sans-serif`;
+      ctx.font = FONT;
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
       ctx.lineJoin = "round";
@@ -227,13 +231,13 @@ export class MapView {
       ctx.fillStyle = p.ink;
       ctx.fillText(text, x, y);
     };
-    const inView = (x: number, y: number) =>
-      x > 0 && y > 8 && x < this.width - 60 && y < this.height - 8;
+    const inView = (x: number, y: number, text: string) =>
+      x > 0 && y > 12 && x < this.width - room(text) && y < this.height - 12;
     for (let i = 0; i < sc.cells.length; i++) {
       if (sc.cells[i] !== HOUSE) continue;
       const x = ((i % sc.cols) + 1) * cell * this.scale + this.ox + 2;
       const y = (Math.floor(i / sc.cols) + 0.5) * cell * this.scale + this.oy;
-      if (!inView(x, y)) continue;
+      if (!inView(x, y, "house")) continue;
       name("house", x, y);
       break;
     }
@@ -241,7 +245,7 @@ export class MapView {
       if (!n.canSignal) return false;
       const x = n.x * this.scale + this.ox;
       const y = n.y * this.scale + this.oy;
-      return inView(x, y);
+      return inView(x, y, "junction with signals");
     });
     if (node) {
       const x = node.x * this.scale + this.ox + 0.5 * cell * this.scale + 2;
@@ -376,12 +380,13 @@ export class MapView {
       ctx.lineTo(a + size - ridge, b + size / 2);
       ctx.stroke();
       const weight = sc.weights.get(i) ?? 1;
-      if (weight !== 1 && cell * this.scale > 26) {
+      // The weight goes under the house, at the text size, once the house is large enough.
+      if (weight !== 1 && cell * this.scale > 56) {
         ctx.fillStyle = p.ink;
-        ctx.font = `600 ${cell * 0.24}px "IBM Plex Sans", sans-serif`;
+        ctx.font = `${17 / this.scale}px "Newsreader", "CM Web Serif", Georgia, serif`;
         ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(`×${weight}`, x + cell / 2, y + cell - inset * 0.48);
+        ctx.textBaseline = "alphabetic";
+        ctx.fillText(`×${weight}`, x + cell / 2, y + cell - 2 / this.scale);
       }
     }
   }
@@ -449,8 +454,11 @@ export class MapView {
       ctx.roundRect(-CAR_LENGTH / 2, -minWidth / 2, CAR_LENGTH, minWidth, 0.5);
       ctx.fill();
       if (detailed) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+        // The windscreen, in the page colour half through.
+        ctx.fillStyle = p.ground;
+        ctx.globalAlpha = 0.5;
         ctx.fillRect(0.35, -CAR_WIDTH / 2 + 0.22, 0.9, CAR_WIDTH - 0.44);
+        ctx.globalAlpha = 1;
         if (now[i + 5]! < -1.2) {
           ctx.fillStyle = p.brake;
           ctx.fillRect(-CAR_LENGTH / 2, -CAR_WIDTH / 2, 0.45, 0.5);
