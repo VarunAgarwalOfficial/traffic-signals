@@ -66,6 +66,8 @@ export class MapView {
   ox = 0;
   oy = 0;
   showGrid = false;
+  /** Name one house and one signal where they sit on the map. */
+  labels = false;
   /** Cells to outline: the selection and the keyboard cursor. */
   selected = -1;
   cursor = -1;
@@ -208,6 +210,44 @@ export class MapView {
     this.drawOutline(sc, this.selected, px, false);
     this.drawOutline(sc, this.cursor, px, true);
     ctx.restore();
+    if (this.labels) this.drawLabels(sc);
+  }
+
+  /** Screen-space names for one house and one signalled junction, with a halo so they read over roads. */
+  private drawLabels(sc: Scenario): void {
+    const { ctx, cell, palette: p } = this;
+    const name = (text: string, x: number, y: number) => {
+      ctx.font = `500 12px "IBM Plex Sans", system-ui, sans-serif`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.lineJoin = "round";
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = p.ground;
+      ctx.strokeText(text, x, y);
+      ctx.fillStyle = p.ink;
+      ctx.fillText(text, x, y);
+    };
+    const inView = (x: number, y: number) =>
+      x > 0 && y > 8 && x < this.width - 60 && y < this.height - 8;
+    for (let i = 0; i < sc.cells.length; i++) {
+      if (sc.cells[i] !== HOUSE) continue;
+      const x = ((i % sc.cols) + 1) * cell * this.scale + this.ox + 2;
+      const y = (Math.floor(i / sc.cols) + 0.5) * cell * this.scale + this.oy;
+      if (!inView(x, y)) continue;
+      name("house", x, y);
+      break;
+    }
+    const node = this.network?.nodes.find((n) => {
+      if (!n.canSignal) return false;
+      const x = n.x * this.scale + this.ox;
+      const y = n.y * this.scale + this.oy;
+      return inView(x, y);
+    });
+    if (node) {
+      const x = node.x * this.scale + this.ox + 0.5 * cell * this.scale + 2;
+      const y = node.y * this.scale + this.oy + 0.9 * cell * this.scale;
+      name("junction with signals", x, y);
+    }
   }
 
   private drawGrid(sc: Scenario, px: number): void {

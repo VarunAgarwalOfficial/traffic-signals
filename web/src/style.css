@@ -236,62 +236,28 @@ symbol .solid {
   text-wrap: pretty;
 }
 
-/* ----- header ----- */
+/* ----- page: one column, read top to bottom ----- */
+
+.top,
+main {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 0 16px;
+}
 
 .top {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   display: flex;
   align-items: center;
-  gap: 20px;
   height: var(--head);
-  padding: 0 16px;
-  background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
 
-.tabs {
-  display: flex;
-  align-self: stretch;
-  gap: 4px;
-}
-
-.tabs button {
-  position: relative;
-  padding: 0 12px;
-  border: 0;
-  background: none;
+.lede {
+  max-width: 68ch;
+  margin: 16px 0;
   color: var(--ink-2);
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.tabs button:hover {
-  color: var(--ink);
-}
-
-.tabs button[aria-selected="true"] {
-  color: var(--ink);
-}
-
-.tabs button[aria-selected="true"]::after {
-  content: "";
-  position: absolute;
-  inset: auto 8px 0;
-  height: 2px;
-  background: var(--accent);
-}
-
-.tabs button:focus-visible {
-  outline-offset: -4px;
-}
-
-.top-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
+  font-size: 16px;
+  text-wrap: pretty;
 }
 
 /* ----- controls ----- */
@@ -442,6 +408,7 @@ input[type="range"]::-moz-range-thumb {
 
 .segmented.wide {
   display: flex;
+  flex-wrap: wrap;
 }
 
 .segmented label {
@@ -492,22 +459,14 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 0 0 1px var(--line-strong);
 }
 
-/* ----- build view ----- */
-
-.view[hidden] {
-  display: none;
-}
-
-.build {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 348px;
-  height: calc(100dvh - var(--head));
-}
+/* ----- the town ----- */
 
 .stage {
   position: relative;
-  min-height: 0;
+  height: clamp(260px, min(52dvh, 80vw), 600px);
   overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   background: var(--map-ground);
 }
 
@@ -516,13 +475,17 @@ input[type="range"]::-moz-range-thumb {
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+/* Only while "Change the map" is open does the map take drags and pinches from the page. */
+#map[data-editing="true"] {
   touch-action: none;
   cursor: grab;
 }
 
-#map[data-tool="road"],
-#map[data-tool="house"],
-#map[data-tool="erase"] {
+#map[data-editing="true"][data-tool="road"],
+#map[data-editing="true"][data-tool="house"],
+#map[data-editing="true"][data-tool="erase"] {
   cursor: crosshair;
 }
 
@@ -530,122 +493,102 @@ input[type="range"]::-moz-range-thumb {
   outline-offset: -3px;
 }
 
-.tools,
-.zoom,
-.transport {
-  position: absolute;
-  display: flex;
-  gap: 2px;
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
+.map-legend {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.tools {
-  top: 12px;
-  left: 12px;
-  flex-direction: column;
-}
-
-.zoom {
-  top: 12px;
-  right: 12px;
-  flex-direction: column;
-}
-
-.transport {
-  left: 50%;
-  bottom: 14px;
+.map-legend li {
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  translate: -50% 0;
-  max-width: calc(100% - 24px);
+  gap: 6px;
 }
 
-.tool {
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 1px;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 4px 6px;
-  border: 0;
-  border-radius: 8px;
-  background: none;
+.map-legend .key-house {
+  background: var(--map-house);
+}
+
+.map-legend .key-car {
+  width: 14px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--car-3);
+}
+
+.map-legend .key-line {
+  width: 3px;
+  height: 12px;
+  border-radius: 1px;
+}
+
+.transport,
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+
+.transport {
+  margin-top: 14px;
+}
+
+.speed > span {
+  justify-content: flex-start;
+}
+
+.clock {
+  align-self: center;
   color: var(--ink-2);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.2;
-  cursor: pointer;
-  transition:
-    background-color 0.12s,
-    color 0.12s;
+  font-size: 14px;
 }
 
-.tools .tool {
-  min-width: 56px;
-  min-height: 52px;
-}
-
-.tool:hover:not(:disabled) {
-  background: var(--bg);
+.clock output {
+  margin-left: 4px;
   color: var(--ink);
+  font-weight: 600;
+}
+
+.controller {
+  max-width: 24rem;
+  margin-top: 14px;
+}
+
+.notice:empty {
+  display: none;
+}
+
+.notice {
+  margin-top: 12px;
+  color: var(--ink-2);
+}
+
+.happened {
+  max-width: 68ch;
+  margin: 14px 0 8px;
+  font-size: 15px;
+  text-wrap: pretty;
 }
 
 .tool[aria-pressed="true"] {
+  border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent);
 }
 
-.tool.primary {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
-.tool.primary:hover:not(:disabled) {
-  background: var(--accent);
-  color: var(--accent-ink);
-  filter: brightness(1.08);
-}
-
-.tool:disabled {
-  opacity: 0.4;
+.btn:disabled {
+  opacity: 0.45;
   cursor: default;
 }
 
-.rule {
-  height: 1px;
-  margin: 3px 6px;
-  background: var(--line);
-}
-
-.clock {
-  min-width: 58px;
-  padding: 0 10px 0 6px;
-  font-weight: 600;
-  text-align: right;
-}
-
-.panel {
-  overflow-y: auto;
-  border-left: 1px solid var(--line);
-  background: var(--surface);
-}
-
-.panel > section {
+.measured {
   display: grid;
   gap: 12px;
-  padding: 18px 20px 20px;
+  margin-top: 28px;
 }
 
-.panel > section + section {
-  border-top: 1px solid var(--line);
-}
-
-.panel h3 {
+.measured h3 {
   margin-top: 4px;
   font-size: 13.5px;
   font-weight: 500;
@@ -655,14 +598,12 @@ input[type="range"]::-moz-range-thumb {
 .inspector {
   display: grid;
   gap: 8px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--line-strong);
 }
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+  gap: 14px 16px;
 }
 
 .stats div {
@@ -677,9 +618,38 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .stats dd {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* ----- closed by default: deeper material ----- */
+
+details.more {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+details.more[open] {
+  padding-bottom: 8px;
+}
+
+details.more > summary {
+  font-weight: 500;
+  cursor: pointer;
+}
+
+details.more > * + * {
+  margin-top: 14px;
+}
+
+.share-row {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
 }
 
 /* ----- charts ----- */
@@ -811,33 +781,12 @@ table i {
 /* ----- compare view ----- */
 
 .compare {
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 28px 24px 56px;
-}
-
-.compare-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
-  gap: 20px 40px;
-  align-items: start;
-}
-
-.compare-head h2 {
-  margin-bottom: 8px;
-  font-size: 24px;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  text-transform: none;
-  color: var(--ink);
-  text-wrap: balance;
+  margin-bottom: 48px;
 }
 
 .compare-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px 24px;
-  align-items: end;
+  gap: 16px;
 }
 
 fieldset {
@@ -931,17 +880,13 @@ legend {
 }
 
 .tile figcaption strong {
-  overflow: hidden;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .tile figcaption span {
   grid-column: 2;
   color: var(--ink-2);
   font-size: 13px;
-  white-space: nowrap;
 }
 
 .tile canvas {
@@ -952,17 +897,12 @@ legend {
 
 .results {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 36px 48px;
-  margin-top: 36px;
+  gap: 32px;
+  margin-top: 28px;
 }
 
 .results[hidden] {
   display: none;
-}
-
-.results .span {
-  grid-column: 1 / -1;
 }
 
 .results figure[hidden] {
@@ -1040,25 +980,6 @@ th[scope="row"] i {
 
 /* ----- messages ----- */
 
-.toast {
-  position: fixed;
-  left: 50%;
-  bottom: 24px;
-  z-index: 10;
-  max-width: min(440px, calc(100vw - 32px));
-  padding: 10px 16px;
-  border-radius: 10px;
-  background: var(--ink);
-  color: var(--bg);
-  font-size: 14px;
-  box-shadow: var(--shadow);
-  translate: -50% 0;
-}
-
-.toast[hidden] {
-  display: none;
-}
-
 .fatal,
 noscript {
   display: block;
@@ -1074,130 +995,8 @@ noscript {
     --head: 52px;
   }
 
-  .top {
-    gap: 10px;
-    padding: 0 10px;
-  }
-
-  h1 {
-    font-size: 15px;
-  }
-
-  .tabs button {
-    padding: 0 8px;
-  }
-
-  #share span {
-    display: none;
-  }
-
-  #share {
-    width: 36px;
-    padding: 0;
-  }
-
-  #preset {
-    max-width: 104px;
-  }
-
-  .build {
-    display: block;
-    height: auto;
-  }
-
-  .stage {
-    height: min(62dvh, 560px);
-    min-height: 340px;
-  }
-
-  .tools {
-    top: 8px;
-    left: 8px;
-    flex-direction: row;
-  }
-
-  .tools .tool {
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  .tools .tool span {
-    display: none;
-  }
-
-  .tools .rule {
-    width: 1px;
-    height: auto;
-    margin: 6px 3px;
-  }
-
-  /* Pinching zooms on a phone; only the button that shows the whole map stays. */
-  .zoom {
-    top: 8px;
-    right: 8px;
-  }
-
-  #zoom-in,
-  #zoom-out {
-    display: none;
-  }
-
-  .transport {
-    bottom: 10px;
-  }
-
-  .transport .segmented label {
-    flex: 1;
-    display: flex;
-    cursor: pointer;
-  }
-
-  .segmented input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .segmented span {
-    display: grid;
-    place-items: center;
-    padding: 0 7px;
-  }
-
-  .clock {
-    min-width: 46px;
-    padding: 0 6px 0 2px;
-  }
-
-  .panel {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-  }
-
-  .compare {
-    padding: 20px 16px 48px;
-  }
-
-  .compare-head,
-  .compare-form,
-  .results {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .compare-head h2 {
-    font-size: 21px;
-  }
-
   .tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-  }
-}
-
-@media (max-width: 400px) {
-  .top h1 {
-    max-width: 62px;
-    white-space: normal;
-    line-height: 1.1;
   }
 }

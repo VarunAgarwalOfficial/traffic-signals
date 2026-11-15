@@ -52,7 +52,13 @@ export class BuildView {
   private sim: Simulation | null = null;
   private readonly view: MapView;
   private tool: Tool = "select";
-  private playing = true;
+  /** Nothing moves until the reader presses Play. */
+  private playing = false;
+  /** The map can be panned, zoomed and edited only while "Change the map" is open. */
+  private editing = false;
+  private looping = false;
+  /** Why the last rebuild failed, shown in place of the account of the traffic. */
+  private problem = "";
   private speed = 4;
   private owed = 0;
   private lastFrame = 0;
@@ -68,7 +74,6 @@ export class BuildView {
   constructor(
     private readonly core: Core,
     scenario: Scenario,
-    private readonly toast: (message: string) => void,
     seed = 1,
   ) {
     this.scenario = scenario;
@@ -76,16 +81,39 @@ export class BuildView {
     $<HTMLInputElement>("seed").value = String(seed);
     this.view = new MapView($<HTMLCanvasElement>("map"), core.info.cell);
     this.view.showGrid = true;
-    this.view.bottomInset = 64;
+    this.view.labels = true;
     this.fillControls();
     this.bindControls();
     this.bindCanvas();
     new ResizeObserver(() => {
       const first = this.view.scale === 2 && this.view.ox === 0;
-      if (this.view.resize() && first) this.view.fit();
+      if (this.view.resize()) {
+        // Until the reader zooms or pans, keep the whole map in view as the page width changes.
+        if (first || !this.editing) this.view.fit();
+        this.kick();
+      }
     }).observe(this.view.canvas);
+    const panel = $<HTMLDetailsElement>("edit-panel");
+    panel.addEventListener("toggle", () => {
+      this.editing = panel.open;
+      this.view.canvas.tabIndex = panel.open ? 0 : -1;
+      this.view.canvas.dataset.editing = String(panel.open);
+      if (!panel.open) {
+        this.setTool("select");
+        this.select(-1);
+        this.view.cursor = -1;
+        this.view.fit();
+      }
+      this.kick();
+    });
     this.view.resize();
     this.load(scenario);
+  }
+
+  /** Draw on the next frame. The loop carries on only while the traffic is playing. */
+  private kick(): void {
+    if (this.looping) return;
+    this.looping = true;
     requestAnimationFrame((t) => this.frame(t));
   }
 
@@ -108,12 +136,14 @@ export class BuildView {
     if (visible) {
       this.view.resize();
       this.lastFrame = 0;
+      this.kick();
     }
   }
 
   themeChanged(): void {
     this.view.palette = readPalette();
     this.drawChart();
+    this.kick();
   }
 
   // ----- simulation -----
@@ -123,19 +153,22 @@ export class BuildView {
     this.sim?.free();
     this.sim = null;
     this.view.clearCars();
+    this.problem = "";
     try {
       this.sim = this.core.simulate(formatScenario(this.scenario), this.seed);
       this.view.setNetwork(this.sim.network());
       this.pushFrame();
     } catch (error) {
       this.view.setNetwork(null);
-      this.toast(error instanceof Error ? error.message : String(error));
+      this.problem = error instanceof Error ? error.message : String(error);
     }
     this.owed = 0;
     this.updateStats();
     this.drawChart();
     this.renderInspector();
     $<HTMLButtonElement>("undo").disabled = this.undoStack.length === 0;
+    this.showPlaying();
+    this.kick();
   }
 
   private pushFrame(): void {
@@ -143,7 +176,7 @@ export class BuildView {
   }
 
   private frame(now: number): void {
-    requestAnimationFrame((t) => this.frame(t));
+    this.looping = false;
     if (!this.visible) return;
     const elapsed = this.lastFrame ? Math.min((now - this.lastFrame) / 1000, 0.1) : 0;
     this.lastFrame = now;
@@ -167,6 +200,14 @@ export class BuildView {
       this.lastChart = now;
       this.drawChart();
     }
+    if (this.playing && this.sim) {
+      this.looping = true;
+      requestAnimationFrame((t) => this.frame(t));
+    } else {
+      // Stopped: bring the numbers up to date once, then draw nothing until the next input.
+      this.lastFrame = 0;
+      this.updateStats();
+    }
   }
 
   private updateStats(): void {
@@ -175,21 +216,53 @@ export class BuildView {
       if (node.textContent !== text) node.textContent = text;
     };
     if (!this.sim) {
-      for (const id of ["s-delay", "s-p95", "s-flow", "s-stops", "s-queue", "s-backlog"])
-        set(id, "–");
+      for (const id of ["s-delay", "s-p95", "s-flow", "s-stops"]) set(id, "none yet");
+      set("s-queue", "0 of 0");
+      set("s-backlog", "0");
       set("clock", "0:00");
+      set("happened", `The map cannot run as drawn: ${this.problem}`);
       return;
     }
     const s = this.sim.stats();
     const m = s.metrics;
     const some = m.finished > 0;
+    const seconds = (v: number, digits: number) => `${v.toFixed(digits)} seconds`;
     set("clock", clock(s.time));
-    set("s-delay", some ? `${m.delay_mean.toFixed(1)} s` : "–");
-    set("s-p95", some ? `${m.delay_p95.toFixed(0)} s` : "–");
-    set("s-flow", s.time >= 60 ? Math.round(m.throughput).toLocaleString("en") : "–");
-    set("s-stops", some ? m.stops_per_trip.toFixed(1) : "–");
+    set("s-delay", some ? seconds(m.delay_mean, 1) : "none yet");
+    set("s-p95", some ? seconds(m.delay_p95, 0) : "none yet");
+    set(
+      "s-flow",
+      s.time >= 60 ? Math.round(m.throughput).toLocaleString("en") : "after one minute",
+    );
+    set("s-stops", some ? m.stops_per_trip.toFixed(1) : "none yet");
     set("s-queue", `${s.queued} of ${s.active}`);
     set("s-backlog", String(s.backlog));
+    set("happened", this.describe(s.time, s.active, s.queued, m.finished, m.delay_mean));
+  }
+
+  /** What the traffic is doing now, in plain words. */
+  private describe(
+    time: number,
+    active: number,
+    queued: number,
+    finished: number,
+    delay: number,
+  ): string {
+    const controller = this.core.info.controllers.find((c) => c.id === this.scenario.controller);
+    const name = controller?.label.toLowerCase() ?? "the chosen";
+    if (time === 0) {
+      return (
+        `Nothing has run yet: the roads are empty and the signals are set to ${name} control. ` +
+        `Press Play and cars will start leaving houses, about ${this.scenario.demand.toLocaleString("en")} trips an hour.`
+      );
+    }
+    const cars = (n: number) => `${n} car${n === 1 ? "" : "s"}`;
+    const trips =
+      finished === 0
+        ? "No trip has finished yet."
+        : `${finished.toLocaleString("en")} trip${finished === 1 ? " has" : "s have"} finished, each held up ${delay.toFixed(1)} seconds on average.`;
+    const state = this.playing ? "" : " Paused.";
+    return `After ${clock(time)} of town time: ${cars(active)} on the roads, ${queued} of them stopped at a light or behind another car. ${trips}${state}`;
   }
 
   private drawChart(): void {
@@ -198,7 +271,7 @@ export class BuildView {
     host.classList.toggle("empty", points.length < 2);
     if (points.length < 2) {
       host.querySelector("svg")?.remove();
-      host.dataset.empty = "The chart starts after two minutes of simulated time.";
+      host.dataset.empty = "Nothing to draw yet: the chart starts after two minutes of town time.";
       return;
     }
     lineChart(host, {
@@ -207,7 +280,7 @@ export class BuildView {
       xTicks: minuteTicks,
       y: (v) => `${Math.round(v)} s`,
       height: 150,
-      description: "Mean delay of trips finishing in each simulated minute.",
+      description: "Average hold-up in seconds of trips finishing in each minute of town time.",
     });
   }
 
@@ -289,7 +362,7 @@ export class BuildView {
     if (cell < 0) {
       host.append(
         note(
-          "With the Select tool, pick a junction to give it its own controller, or a house to change how many trips it makes.",
+          "Nothing chosen. With Select, tap a junction on the map to give it its own controller, or a house to change how many trips it makes.",
         ),
       );
       return;
@@ -364,13 +437,24 @@ export class BuildView {
       b.setAttribute("aria-pressed", String(b.dataset.tool === tool));
     }
     this.view.canvas.dataset.tool = tool;
+    const names: Record<Tool, string> = {
+      select: "Select",
+      road: "Road",
+      house: "House",
+      erase: "Erase",
+    };
+    $("tool-now").textContent = `Tool in use: ${names[tool]}`;
   }
 
   private setPlaying(playing: boolean): void {
     this.playing = playing;
-    const button = $("play");
-    button.setAttribute("aria-label", playing ? "Pause" : "Play");
-    button.querySelector("use")?.setAttribute("href", playing ? "#i-pause" : "#i-play");
+    this.showPlaying();
+    this.updateStats();
+    this.kick();
+  }
+
+  private showPlaying(): void {
+    $("play").textContent = this.playing ? "Pause" : "Play";
   }
 
   private stepOnce(): void {
@@ -380,11 +464,13 @@ export class BuildView {
     this.pushFrame();
     this.pushFrame();
     this.updateStats();
+    this.kick();
   }
 
   private zoom(factor: number): void {
     const box = this.view.canvas.getBoundingClientRect();
     this.view.zoomAt(factor, box.width / 2, box.height / 2);
+    this.kick();
   }
 
   private bindControls(): void {
@@ -394,13 +480,18 @@ export class BuildView {
     $("undo").addEventListener("click", () => this.undo());
     $("zoom-in").addEventListener("click", () => this.zoom(1.3));
     $("zoom-out").addEventListener("click", () => this.zoom(1 / 1.3));
-    $("zoom-fit").addEventListener("click", () => this.view.fit());
+    $("zoom-fit").addEventListener("click", () => {
+      this.view.fit();
+      this.kick();
+    });
     $("play").addEventListener("click", () => this.setPlaying(!this.playing));
     $("step").addEventListener("click", () => this.stepOnce());
     $("restart").addEventListener("click", () => this.rebuild());
     for (const b of document.querySelectorAll<HTMLInputElement>("#speed input")) {
       b.addEventListener("change", () => {
         this.speed = Number(b.value);
+        $("speed-label").textContent =
+          this.speed === 1 ? "Speed: real time" : `Speed: ${this.speed} times real time`;
       });
     }
     $<HTMLSelectElement>("controller").addEventListener("change", (e) => {
@@ -409,6 +500,8 @@ export class BuildView {
       if (this.sim) this.view.setNetwork(this.sim.network());
       this.syncControls();
       this.renderInspector();
+      this.updateStats();
+      this.kick();
     });
     $<HTMLInputElement>("demand").addEventListener("input", (e) => {
       this.scenario.demand = Number((e.target as HTMLInputElement).value);
@@ -437,7 +530,16 @@ export class BuildView {
       return { x: e.clientX - box.left, y: e.clientY - box.top };
     };
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+    // Every input on the map may change what it shows: draw once afterwards.
+    for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel"]) {
+      canvas.addEventListener(type, () => {
+        if (this.editing) this.kick();
+      });
+    }
+    canvas.addEventListener("keydown", () => this.kick());
     canvas.addEventListener("pointerdown", (e) => {
+      // While "Change the map" is closed the map is a still picture, and the page scrolls over it.
+      if (!this.editing) return;
       canvas.setPointerCapture(e.pointerId);
       const p = local(e);
       this.pointers.set(e.pointerId, p);
@@ -526,6 +628,7 @@ export class BuildView {
     canvas.addEventListener(
       "wheel",
       (e) => {
+        if (!this.editing) return;
         e.preventDefault();
         const p = local(e);
         this.view.zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), p.x, p.y);
@@ -537,10 +640,11 @@ export class BuildView {
     });
     canvas.addEventListener("blur", () => {
       this.view.cursor = -1;
+      this.kick();
     });
     canvas.addEventListener("keydown", (e) => this.key(e));
     document.addEventListener("keydown", (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && this.visible) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && this.visible && this.editing) {
         const target = e.target as HTMLElement;
         if (target.tagName === "INPUT") return;
         e.preventDefault();
@@ -557,7 +661,7 @@ export class BuildView {
   }
 
   private key(e: KeyboardEvent): void {
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || !this.editing) return;
     const sc = this.scenario;
     const view = this.view;
     const moves: Record<string, [number, number]> = {

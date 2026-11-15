@@ -6,28 +6,9 @@ import { Core } from "./wasm.ts";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
-let toastTimer = 0;
-function toast(message: string): void {
-  const node = $("toast");
-  node.textContent = message;
-  node.hidden = false;
-  clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => {
-    node.hidden = true;
-  }, 4000);
-}
-
-function currentTheme(): "light" | "dark" {
-  const set = document.documentElement.dataset.theme;
-  if (set === "light" || set === "dark") return set;
-  return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
-function showTheme(): void {
-  const dark = currentTheme() === "dark";
-  const button = $("theme");
-  button.setAttribute("aria-label", dark ? "Use the light theme" : "Use the dark theme");
-  button.querySelector("use")?.setAttribute("href", dark ? "#i-sun" : "#i-moon");
+/** A message in the page, under the controls: no pop-ups. */
+function notice(message: string): void {
+  $("notice").textContent = message;
 }
 
 async function start(): Promise<void> {
@@ -56,11 +37,11 @@ async function start(): Promise<void> {
       custom.hidden = false;
       presetSelect.value = "";
     } catch {
-      toast("That link does not hold a map this page can read. Showing the town instead.");
+      notice("That link does not hold a map this page can read. Showing the town instead.");
     }
   }
 
-  const build = new BuildView(core, initial, toast, shared ? seed : 1);
+  const build = new BuildView(core, initial, shared ? seed : 1);
   const compare = new CompareView(core, () => ({ scenario: build.scenario, seed: build.seed }));
 
   presetSelect.addEventListener("change", () => {
@@ -77,51 +58,22 @@ async function start(): Promise<void> {
     history.replaceState(null, "", hash);
     try {
       await navigator.clipboard.writeText(url);
-      toast("Link copied. It holds the map, the demand, the controllers and the seed.");
+      $("share-status").textContent =
+        "Link copied. It holds the map, the trips an hour, the controllers and the seed.";
     } catch {
-      toast("The link is in the address bar. Copy it from there.");
+      $("share-status").textContent = "The link is in the address bar. Copy it from there.";
     }
   });
 
-  const tabs = [$("tab-build"), $("tab-compare")];
-  const show = (which: number) => {
-    tabs.forEach((tab, i) => {
-      tab.setAttribute("aria-selected", String(i === which));
-      tab.tabIndex = i === which ? 0 : -1;
-    });
-    $("build").hidden = which !== 0;
-    $("compare").hidden = which !== 1;
-    build.setVisible(which === 0);
-    compare.setVisible(which === 1);
-  };
-  tabs.forEach((tab, i) => {
-    tab.addEventListener("click", () => show(i));
-    tab.addEventListener("keydown", (e) => {
-      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-      const next = (i + 1) % tabs.length;
-      show(next);
-      tabs[next]?.focus();
-    });
-  });
+  // The comparison is a closed disclosure under the town; it works only while open.
+  const comparePanel = $<HTMLDetailsElement>("compare");
+  comparePanel.addEventListener("toggle", () => compare.setVisible(comparePanel.open));
 
-  $("theme").addEventListener("click", () => {
-    const next = currentTheme() === "dark" ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    try {
-      localStorage.setItem("traffic-theme", next);
-    } catch {
-      // Private browsing: the choice lasts for this visit only.
-    }
-    showTheme();
-    build.themeChanged();
-    compare.themeChanged();
-  });
+  // No theme button: the page follows the system colour scheme, as the host page does.
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-    showTheme();
     build.themeChanged();
     compare.themeChanged();
   });
-  showTheme();
   document.documentElement.dataset.ready = "true";
 }
 

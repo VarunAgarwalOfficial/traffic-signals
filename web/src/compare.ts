@@ -37,6 +37,7 @@ export class CompareView {
   private running = false;
   private visible = false;
   private worker: Worker | null = null;
+  private looping = false;
 
   constructor(
     private readonly core: Core,
@@ -61,6 +62,12 @@ export class CompareView {
     });
     $("compare-seeds").addEventListener("click", () => this.startSeeds());
     new ResizeObserver(() => this.renderResults()).observe($("compare-results"));
+  }
+
+  /** Draw on the next frame; the loop keeps going only while a live run is under way. */
+  private kick(): void {
+    if (this.looping) return;
+    this.looping = true;
     requestAnimationFrame((t) => this.frame(t));
   }
 
@@ -70,9 +77,10 @@ export class CompareView {
     if (!visible) return;
     const { scenario, seed } = this.source();
     $("compare-intro").textContent =
-      `Each controller gets the map from Build and exactly the same trips: ${scenario.demand.toLocaleString("en")} an hour, seed ${seed}. The first quarter of the run is warm-up and is not measured.`;
+      `Each controller gets the map above and exactly the same trips: ${scenario.demand.toLocaleString("en")} an hour, seed ${seed}. The first quarter of each run lets the traffic build up and is not measured. Nothing has run yet: choose the controllers and press Run side by side.`;
     for (const t of this.tiles) t.view.resize();
     this.renderResults();
+    this.kick();
   }
 
   themeChanged(): void {
@@ -150,6 +158,7 @@ export class CompareView {
     $("compare-results").hidden = false;
     this.collectLive();
     this.renderResults();
+    this.kick();
   }
 
   private collectLive(): void {
@@ -158,14 +167,17 @@ export class CompareView {
       this.rows[i]!.runs = [s.metrics];
       t.readout.textContent =
         s.metrics.finished > 0
-          ? `${s.metrics.delay_all.toFixed(0)} s delay, ${s.queued} standing`
-          : `${s.queued} standing`;
+          ? `${s.metrics.delay_all.toFixed(0)} seconds hold-up, ${s.queued} cars stopped`
+          : `${s.queued} cars stopped`;
     });
   }
 
   private frame(now: number): void {
-    requestAnimationFrame((t) => this.frame(t));
-    if (!this.visible || this.tiles.length === 0) return;
+    this.looping = false;
+    if (!this.visible || this.tiles.length === 0) {
+      this.lastFrame = 0;
+      return;
+    }
     const real = this.lastFrame ? Math.min((now - this.lastFrame) / 1000, 0.1) : 0;
     this.lastFrame = now;
     const dt = this.core.info.dt;
@@ -190,13 +202,19 @@ export class CompareView {
       if (finished) {
         this.running = false;
         this.status(
-          `Finished: ${clock(this.duration)} simulated with one seed. One run can mislead; repeat with ${SEEDS} seeds for intervals.`,
+          `Finished: ${clock(this.duration)} of town time with one seed. One run can mislead; repeat with ${SEEDS} seeds to see how much the result varies.`,
         );
       } else {
-        this.status(`Running: ${clock(this.elapsed)} of ${clock(this.duration)} simulated.`);
+        this.status(`Running: ${clock(this.elapsed)} of ${clock(this.duration)} of town time.`);
       }
     }
     for (const t of this.tiles) t.view.draw(1);
+    if (this.running) {
+      this.looping = true;
+      requestAnimationFrame((t) => this.frame(t));
+    } else {
+      this.lastFrame = 0;
+    }
   }
 
   // ----- many seeds, in a worker -----
@@ -273,8 +291,8 @@ export class CompareView {
         (r) => `${mean(r, (m) => m.unfinished).toFixed(0)} trips unfinished at the end`,
       ),
       format: (v) => v.toFixed(v < 10 ? 1 : 0),
-      unit: " s",
-      description: "Mean delay per trip for each controller.",
+      unit: " seconds",
+      description: "Average hold-up per trip for each controller.",
     });
     barChart($("chart-flow"), {
       bars: bars(
@@ -285,7 +303,7 @@ export class CompareView {
       description: "Trips finished per hour for each controller.",
     });
     $("cap-delay-note").textContent =
-      "Seconds lost against driving the route alone. Trips still under way count at their delay so far.";
+      "Seconds lost against driving the route on an empty road. Trips still under way count at their hold-up so far.";
     const asked = rows[0] ? mean(rows[0], (m) => m.demand) : 0;
     $("cap-flow-note").textContent =
       `${Math.round(asked).toLocaleString("en")} an hour were asked for. Less than that means queues are growing.`;
@@ -304,9 +322,9 @@ export class CompareView {
         xTicks: minuteTicks,
         y: (v) => `${Math.round(v)} s`,
         shadeBelow: this.duration / 4,
-        shadeLabel: "warm-up",
+        shadeLabel: "build-up, not measured",
         description:
-          "Mean delay of trips finishing in each simulated minute, one line per controller.",
+          "Average hold-up in seconds of trips finishing in each minute of town time, one line per controller.",
       });
       const legend = $("legend-time");
       legend.replaceChildren(
@@ -336,13 +354,13 @@ export class CompareView {
         : value;
     };
     const columns: [string, (r: Row) => string][] = [
-      ["Mean delay, s", (r) => cell(r, (m) => m.delay_all, 1)],
-      ["Finished trips only, s", (r) => cell(r, (m) => m.delay_mean, 1)],
-      ["Slowest 5%, s", (r) => cell(r, (m) => m.delay_p95, 0)],
+      ["Average hold-up, seconds", (r) => cell(r, (m) => m.delay_all, 1)],
+      ["Finished trips only, seconds", (r) => cell(r, (m) => m.delay_mean, 1)],
+      ["Slowest 5%, seconds", (r) => cell(r, (m) => m.delay_p95, 0)],
       ["Finished an hour", (r) => cell(r, (m) => m.throughput, 0)],
       ["Unfinished", (r) => cell(r, (m) => m.unfinished, 0)],
-      ["Standing cars", (r) => cell(r, (m) => m.queue_mean, 1)],
-      ["Stops a trip", (r) => cell(r, (m) => m.stops_per_trip, 2)],
+      ["Cars stopped, on average", (r) => cell(r, (m) => m.queue_mean, 1)],
+      ["Stops per trip", (r) => cell(r, (m) => m.stops_per_trip, 2)],
     ];
     const head = document.createElement("tr");
     head.append(
@@ -367,7 +385,7 @@ export class CompareView {
     const caption = document.createElement("caption");
     caption.textContent = many
       ? `Mean ± 95% interval over ${rows[0]?.runs.length ?? 0} seeds`
-      : "One seed, measured after the warm-up";
+      : "One seed, measured after the build-up";
     table.replaceChildren(caption, head, ...body);
   }
 }
