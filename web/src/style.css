@@ -361,7 +361,7 @@ input[type="range"] {
 
 .stage {
   position: relative;
-  height: clamp(260px, min(52dvh, 80vw), 600px);
+  height: clamp(200px, min(52dvh, 60vw), 600px);
   overflow: hidden;
   border-top: var(--site-rule-width) solid var(--line);
   border-bottom: var(--site-rule-width) solid var(--line);
@@ -399,21 +399,30 @@ input[type="range"] {
 
 .map-legend li {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--site-space-2);
 }
 
+/* Each mark level with the first line of its text, which may wrap on a phone. */
+.map-legend li > i {
+  flex: none;
+  margin-top: calc((1lh - var(--mark-height, 0.75rem)) / 2);
+}
+
 .map-legend .key-house {
+  --mark-height: 12px;
   background: var(--map-house);
 }
 
 .map-legend .key-car {
+  --mark-height: 6px;
   width: 14px;
   height: 6px;
   background: var(--car-3);
 }
 
 .map-legend .key-line {
+  --mark-height: 14px;
   width: 3px;
   height: 14px;
 }
@@ -434,8 +443,13 @@ input[type="range"] {
   justify-content: flex-start;
 }
 
+/* Level with the buttons: the bottom of the row, at their height. */
 .clock {
-  align-self: center;
+  display: flex;
+  align-items: center;
+  align-self: end;
+  min-height: var(--control);
+  margin: 0;
   color: var(--ink-2);
   font-size: var(--site-step--1);
 }

@@ -48,6 +48,8 @@ const CAR_LENGTH = 4.5;
 const CAR_WIDTH = 1.8;
 const BEND = 9;
 /** North, east, south, west as (dx, dy). */
+type Box = { x0: number; y0: number; x1: number; y1: number };
+
 const DIRS: readonly (readonly [number, number])[] = [
   [0, -1],
   [1, 0],
@@ -132,8 +134,8 @@ export class MapView {
   /** Pixels at the bottom of the canvas covered by controls; `fit` keeps the map clear of them. */
   bottomInset = 0;
 
-  /** Show everything drawn, with a margin. */
-  fit(margin = 1.5): void {
+  /** Show everything drawn, with a margin (in cells; less on a narrow screen, so the map is larger). */
+  fit(margin = this.width < 600 ? 0.4 : 1.5): void {
     const sc = this.scenario;
     if (!sc || this.width === 0) return;
     const b = drawnBounds(sc) ?? { c0: 0, r0: 0, c1: sc.cols - 1, r1: sc.rows - 1 };
@@ -215,42 +217,105 @@ export class MapView {
     if (this.labels) this.drawLabels(sc);
   }
 
-  /** Screen-space names for one house and one signalled junction, with a halo so they read over roads. */
+  /**
+   * Screen-space names for one house and one signalled junction, with a halo. Each name goes at the
+   * first spot beside its house or junction whose box is clear of the canvas edge, every road and
+   * house, and the other name; a name with no clear spot is left off.
+   */
   private drawLabels(sc: Scenario): void {
     const { ctx, cell, palette: p } = this;
     ctx.font = FONT;
-    const room = (text: string) => ctx.measureText(text).width + 4;
-    const name = (text: string, x: number, y: number) => {
-      ctx.font = FONT;
+    const k = cell * this.scale;
+    const half = ((ROAD_WIDTH + 1.6) / 2) * this.scale + 3;
+    // What a name must not touch, in screen boxes: each road arm, each house, the other name.
+    const blocked: Box[] = [];
+    for (let i = 0; i < sc.cells.length; i++) {
+      const x = (i % sc.cols) * k + this.ox;
+      const y = Math.floor(i / sc.cols) * k + this.oy;
+      if (sc.cells[i] === HOUSE) blocked.push({ x0: x, y0: y, x1: x + k, y1: y + k });
+      if (sc.cells[i] !== ROAD) continue;
+      const cx = x + k / 2;
+      const cy = y + k / 2;
+      blocked.push({ x0: cx - half, y0: cy - half, x1: cx + half, y1: cy + half });
+      this.arms(sc, i).forEach((on, d) => {
+        if (!on) return;
+        const [dx, dy] = DIRS[d]!;
+        const ex = cx + (dx * k) / 2;
+        const ey = cy + (dy * k) / 2;
+        blocked.push({
+          x0: Math.min(cx, ex) - half,
+          y0: Math.min(cy, ey) - half,
+          x1: Math.max(cx, ex) + half,
+          y1: Math.max(cy, ey) + half,
+        });
+      });
+    }
+    const m = ctx.measureText("Hg");
+    const up = m.actualBoundingBoxAscent;
+    const down = m.actualBoundingBoxDescent;
+    const clear = (b: Box) =>
+      b.x0 > 4 &&
+      b.y0 > 4 &&
+      b.x1 < this.width - 4 &&
+      b.y1 < this.height - 4 &&
+      !blocked.some((o) => b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
+    /** Try the four corners around an anchor, `gap` out from it; draw at the first clear one. */
+    const place = (text: string, ax: number, ay: number, gap: number): boolean => {
+      const w = ctx.measureText(text).width;
+      for (const [sx, sy] of [
+        [1, 1],
+        [1, -1],
+        [-1, 1],
+        [-1, -1],
+      ] as const) {
+        const x = sx > 0 ? ax + gap : ax - gap - w;
+        const y = sy > 0 ? ay + gap + up : ay - gap - down;
+        const box = { x0: x - 2, y0: y - up - 2, x1: x + w + 2, y1: y + down + 2 };
+        if (!clear(box)) continue;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
+        ctx.lineJoin = "round";
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = p.ground;
+        ctx.strokeText(text, x, y);
+        ctx.fillStyle = p.ink;
+        ctx.fillText(text, x, y);
+        blocked.push(box);
+        return true;
+      }
+      return false;
+    };
+    for (let i = 0; i < sc.cells.length; i++) {
+      if (sc.cells[i] !== HOUSE) continue;
+      // Beside the house, level with it.
+      const x = ((i % sc.cols) + 1) * k + this.ox + 4;
+      const y = (Math.floor(i / sc.cols) + 0.5) * k + this.oy + (up - down) / 2;
+      const w = ctx.measureText("house").width;
+      const box = { x0: x - 2, y0: y - up - 2, x1: x + w + 2, y1: y + down + 2 };
+      if (!clear(box)) continue;
       ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
+      ctx.textBaseline = "alphabetic";
       ctx.lineJoin = "round";
       ctx.lineWidth = 4;
       ctx.strokeStyle = p.ground;
-      ctx.strokeText(text, x, y);
+      ctx.strokeText("house", x, y);
       ctx.fillStyle = p.ink;
-      ctx.fillText(text, x, y);
-    };
-    const inView = (x: number, y: number, text: string) =>
-      x > 0 && y > 12 && x < this.width - room(text) && y < this.height - 12;
-    for (let i = 0; i < sc.cells.length; i++) {
-      if (sc.cells[i] !== HOUSE) continue;
-      const x = ((i % sc.cols) + 1) * cell * this.scale + this.ox + 2;
-      const y = (Math.floor(i / sc.cols) + 0.5) * cell * this.scale + this.oy;
-      if (!inView(x, y, "house")) continue;
-      name("house", x, y);
+      ctx.fillText("house", x, y);
+      blocked.push(box);
       break;
     }
-    const node = this.network?.nodes.find((n) => {
-      if (!n.canSignal) return false;
-      const x = n.x * this.scale + this.ox;
-      const y = n.y * this.scale + this.oy;
-      return inView(x, y, "junction with signals");
-    });
-    if (node) {
-      const x = node.x * this.scale + this.ox + 0.5 * cell * this.scale + 2;
-      const y = node.y * this.scale + this.oy + 0.9 * cell * this.scale;
-      name("junction with signals", x, y);
+    for (const n of this.network?.nodes ?? []) {
+      if (!n.canSignal) continue;
+      // In the corner of a block, just off the junction.
+      if (
+        place(
+          "junction with signals",
+          n.x * this.scale + this.ox,
+          n.y * this.scale + this.oy,
+          half + 3,
+        )
+      )
+        break;
     }
   }
 
@@ -405,11 +470,13 @@ export class MapView {
       const bx = s.x - s.dx * 0.2;
       const by = s.y - s.dy * 0.2;
       ctx.beginPath();
-      ctx.moveTo(bx - nx * 1.25, by - ny * 1.25);
-      ctx.lineTo(bx + nx * 1.25, by + ny * 1.25);
+      // At least 6 px across, so a signal can be seen on a small map.
+      const reach = Math.max(1.25, 3 * px);
+      ctx.moveTo(bx - nx * reach, by - ny * reach);
+      ctx.lineTo(bx + nx * reach, by + ny * reach);
       ctx.strokeStyle = colours[light] ?? p.mark;
       ctx.lineWidth =
-        light === 0 ? Math.max(0.3, px) : Math.max(0.95, (this.scale < 1.5 ? 2 : 3) * px);
+        light === 0 ? Math.max(0.3, px) : Math.max(0.95, (this.scale < 1.5 ? 2.5 : 3) * px);
       ctx.stroke();
     }
     // A ring marks junctions that were given their own controller.
@@ -428,7 +495,9 @@ export class MapView {
   private drawCars(blend: number, px: number): void {
     const { ctx, palette: p, now, before } = this;
     const detailed = this.scale > 2.2;
-    const minWidth = Math.max(CAR_WIDTH, 2.2 * px);
+    // At least 7 by 3 px, so a car can be seen on a small map.
+    const minWidth = Math.max(CAR_WIDTH, 3 * px);
+    const length = Math.max(CAR_LENGTH, 7 * px);
     for (let i = 0; i < now.length; i += CAR_STRIDE) {
       let x = now[i]! + this.shiftX;
       let y = now[i + 1]! + this.shiftY;
@@ -451,7 +520,7 @@ export class MapView {
       ctx.transform(hx, hy, -hy, hx, x, y);
       ctx.fillStyle = p.cars[id % p.cars.length]!;
       ctx.beginPath();
-      ctx.roundRect(-CAR_LENGTH / 2, -minWidth / 2, CAR_LENGTH, minWidth, 0.5);
+      ctx.roundRect(-length / 2, -minWidth / 2, length, minWidth, 0.5);
       ctx.fill();
       if (detailed) {
         // The windscreen, in the page colour half through.
