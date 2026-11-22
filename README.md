@@ -304,3 +304,7 @@ muted text 5.9 and 7.1; the signal and series colours against the page, which is
 ## Credit
 
 Rebuilt from two 2021 prototypes by Varun Agarwal ("AI-based Traffic" 2 and 3, Python with pygame).
+
+## Licence
+
+MIT. See [LICENSE](LICENSE). Fonts keep their own licences, as listed above.
