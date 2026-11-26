@@ -21,7 +21,7 @@ measurements that can be repeated.
 Nothing here is new research. The value is that the standard controllers can be compared on a map
 you drew, with a seed, in a browser tab.
 
-## Run
+## Run it
 
 Needs Rust with the `wasm32-unknown-unknown` target, and a recent Node (built with Node 26).
 
@@ -304,6 +304,10 @@ muted text 5.9 and 7.1; the signal and series colours against the page, which is
 ## Credit
 
 Rebuilt from two 2021 prototypes by Varun Agarwal ("AI-based Traffic" 2 and 3, Python with pygame).
+
+## Status
+
+Working, as of 26 November 2026. See [STATUS.md](STATUS.md).
 
 ## Licence
 

@@ -4,3 +4,20 @@ dist/
 web/src/traffic.wasm
 .env
 results/scratch/
+
+# Shared template
+.DS_Store
+.idea/
+.vscode/
+*.swp
+!.env.example
+.lake/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+*.aux
+*.fdb_latexmk
+*.fls
+*.synctex.gz
