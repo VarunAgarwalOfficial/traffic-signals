@@ -1,4 +1,10 @@
+<p align="center"><img src="docs/banner.png" alt="Pixel art: little cars wait at a crossroads with two signals" width="100%"></p>
+
 # Traffic signals
+
+Draw a road grid and compare traffic signal controllers on the same seeded traffic. Rust and WebAssembly.
+
+[MIT licence](LICENSE)
 
 Draw a road network in the browser, put houses on it, and watch cars drive between them. Pick how
 the traffic signals are controlled, then run the same seeded traffic under several controllers and
