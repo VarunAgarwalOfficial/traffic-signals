@@ -5,6 +5,26 @@ the traffic signals are controlled, then run the same seeded traffic under sever
 compare delay and throughput. The simulation is a Rust library; the browser runs it as WebAssembly
 and a command line runs the same code for sweeps.
 
+![Compare view: the same traffic in the default town under each of the five controllers, one seed](docs/screenshot.png)
+
+## Results
+
+From `./scripts/validate.sh`, 10 seeds a row, mean with a 95% interval. The full tables are
+[below](#what-the-comparison-shows).
+
+- **Mean delay from 36 s to 13 s** on a 4 by 4 grid at light traffic (500 trips an hour), going
+  from fixed-time signals to capacity-aware pressure control.
+- **Actuated control is best in heavy traffic:** 41 s against fixed time's 82 s at 3500 trips an
+  hour. Once demand passes capacity it is the worst.
+- **When the roads fill up, capacity-aware pressure keeps them moving.** At 6500 trips an hour it
+  finishes 3990 trips an hour against plain max pressure's 3608. After a 15-minute jam it emptied
+  the town in 6 of 6 seeds; max pressure managed 2.
+- Three published results reproduced in kind (Gershenson 2005, Varaiya 2013, Gregoire et al.
+  2014). Across 2160 runs no two cars ever overlapped.
+
+**Stack:** Rust with no dependencies for the simulation, compiled to WebAssembly through a plain C
+interface; TypeScript and canvas with Vite for the page; a Rust command line for sweeps.
+
 ## The idea
 
 The original was two attempts, in 2021, at one question: can traffic be simulated well enough to
