@@ -4,7 +4,7 @@
 
 Draw a road grid and compare traffic signal controllers on the same seeded traffic. Rust and WebAssembly.
 
-[MIT licence](LICENSE)
+[Live demo](https://varunagarwalofficial.github.io/traffic-signals/) · [MIT licence](LICENSE)
 
 Draw a road network in the browser, put houses on it, and watch cars drive between them. Pick how
 the traffic signals are controlled, then run the same seeded traffic under several controllers and
