@@ -204,9 +204,9 @@ impl Controller for SelfOrganising {
             self.count[obs.phase] = 0.0;
             self.last_phase = obs.phase;
         }
-        for p in 0..obs.phases {
+        for (p, count) in self.count.iter_mut().enumerate() {
             if p != obs.phase {
-                self.count[p] += obs.sum(p, |l| l.approaching) as f64 * obs.dt;
+                *count += obs.sum(p, |l| l.approaching) as f64 * obs.dt;
             }
         }
         if obs.green_for < self.min_green {
