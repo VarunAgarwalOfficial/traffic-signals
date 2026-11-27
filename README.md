@@ -11,7 +11,7 @@ the traffic signals are controlled, then run the same seeded traffic under sever
 compare delay and throughput. The simulation is a Rust library; the browser runs it as WebAssembly
 and a command line runs the same code for sweeps.
 
-![Compare view: the same traffic in the default town under each of the five controllers, at 900 trips an hour, one seed](docs/screenshot.png)
+![The valley town at the start: a school, market, park, station and farm on a few roads by a river, with signals at six junctions](docs/screenshot.png)
 
 ## Results
 
@@ -267,18 +267,30 @@ crates/core/   the simulation library, no dependencies
 crates/cli/    the `traffic` command
 crates/wasm/   C-ABI exports for the browser (no wasm-bindgen)
 web/           Vite and TypeScript: canvas map, editor, compare view, charts
-web/src/c-editorial-tokens.css   the site's tokens; web/public/fonts the fonts they name
+web/src/mapview.ts, town.ts      the pixel town; scene.ts its scenery; pixel.ts is a copy of the shell's pixel helpers
 scripts/       validate.sh, same-in-browser.mjs
 results/       output of validate.sh
 ```
 
 ## The look
 
-The page uses the look of the author's site. `web/src/c-editorial-tokens.css` is the site's token
-file, copied unchanged, and `web/src/style.css` gives this page's own names (`--ink`, `--go`,
-`--series-1` and so on) the token values. The fonts the token file names are in `web/public/fonts`
-with their licences; the text is Newsreader, under the SIL Open Font License
-(`web/public/fonts/Newsreader-OFL.txt`). Dark follows the system setting.
+The page uses the shared shell of the author's site: `index.html` links its `shell.css` (tokens,
+fonts and type) and `shell.js` (the bar, the About panel and the footer; with `?embed` it draws
+nothing). `web/src/style.css` gives this page's own names (`--ink`, `--go`, `--series-1` and so on)
+the token values. The page is light only.
+
+The map is a pixel town. One art pixel is one metre, so a car sits exactly where the simulation
+puts it, and the map is shown at a whole number of screen pixels per art pixel. The ground, roads,
+houses and shadows are painted once into an offscreen canvas (`town.ts`); each drawn frame adds the
+cars, signals, trees, walkers, chimney smoke and a cat, at 10 frames a second. Under reduced motion
+nothing idles and cars jump from step to step.
+
+The page opens on the valley preset (`crates/core/presets/valley.txt`): a few roads, six
+junctions and five named places. Extra trips run mostly to the school and the station,
+so the main road has a morning rush. Its river, fields, hill and trees come from `web/src/scene.ts`
+and only appear while the map still matches the preset; any other map gets plain grass and a few
+trees. The CLI, the tests and `validate.sh` still use the town preset. The colours are the palette in `web/src/pixel.ts`,
+a copy of the shell's `pixel.js`; change both together.
 
 The site has four meaning colours, used the same way in all the author's tools:
 
@@ -287,7 +299,7 @@ The site has four meaning colours, used the same way in all the author's tools:
 | proved (green) | finished, the answer; series 4 | green signal; max pressure |
 | measured (ochre) | being read or compared; series 3 | amber signal; self-organising |
 | against (red) | written, moved, wrong; series 2 | red signal, brake lights; actuated |
-| open (violet) | the current item; series 1 | the chosen square, junctions with their own controller; fixed time |
+| open (deep blue) | the current item; series 1 | the chosen square, junctions with their own controller; fixed time |
 
 There are five controllers and four colours, so capacity-aware pressure takes the colour of max
 pressure, which it refines, and is drawn as a hollow bar, a dashed line and an outlined key.

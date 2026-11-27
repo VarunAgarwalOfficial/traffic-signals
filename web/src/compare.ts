@@ -189,10 +189,12 @@ export class CompareView {
     this.tiles.forEach((t, i) => {
       const s = t.sim.stats();
       this.rows[i]!.runs = [s.metrics];
+      const stopped = `${s.queued} ${s.queued === 1 ? "car" : "cars"} stopped`;
+      const held = s.metrics.delay_all.toFixed(0);
       t.readout.textContent =
         s.metrics.finished > 0
-          ? `${s.metrics.delay_all.toFixed(0)} seconds hold-up, ${s.queued} cars stopped`
-          : `${s.queued} cars stopped`;
+          ? `${held} ${held === "1" ? "second" : "seconds"} hold-up, ${stopped}`
+          : stopped;
     });
   }
 
@@ -313,7 +315,10 @@ export class CompareView {
     barChart($("chart-delay"), {
       bars: bars(
         (m) => m.delay_all,
-        (r) => `${mean(r, (m) => m.unfinished).toFixed(0)} trips unfinished at the end`,
+        (r) => {
+          const n = mean(r, (m) => m.unfinished).toFixed(0);
+          return `${n} ${n === "1" ? "trip" : "trips"} unfinished at the end`;
+        },
       ),
       format: (v) => v.toFixed(v < 10 ? 1 : 0),
       unit: " seconds",
@@ -322,7 +327,10 @@ export class CompareView {
     barChart($("chart-flow"), {
       bars: bars(
         (m) => m.throughput,
-        (r) => `${mean(r, (m) => m.demand).toFixed(0)} trips an hour asked for`,
+        (r) => {
+          const n = mean(r, (m) => m.demand).toFixed(0);
+          return `${n} ${n === "1" ? "trip" : "trips"} an hour asked for`;
+        },
       ),
       format: (v) => Math.round(v).toLocaleString("en"),
       description: "Trips finished per hour for each controller.",

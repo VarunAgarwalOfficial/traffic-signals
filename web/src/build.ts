@@ -226,7 +226,10 @@ export class BuildView {
     const s = this.sim.stats();
     const m = s.metrics;
     const some = m.finished > 0;
-    const seconds = (v: number, digits: number) => `${v.toFixed(digits)} seconds`;
+    const seconds = (v: number, digits: number) => {
+      const n = v.toFixed(digits);
+      return `${n} ${n === "1" ? "second" : "seconds"}`;
+    };
     set("clock", clock(s.time));
     set("s-delay", some ? seconds(m.delay_mean, 1) : "none yet");
     set("s-p95", some ? seconds(m.delay_p95, 0) : "none yet");

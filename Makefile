@@ -1,4 +1,10 @@
-.PHONY: check lint
+.PHONY: dev build check lint
+
+dev:
+	cd web && npm run dev
+
+build:
+	cd web && npm ci && npm run build
 
 check:
 	cargo test --release

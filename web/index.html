@@ -3,13 +3,22 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#fffbf0" />
     <meta
       name="description"
       content="Draw a road network, pick a traffic signal controller, and compare controllers on the same seeded traffic."
     />
     <title>Traffic signals</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='10' y='2' width='12' height='28' rx='4' fill='%23211f1c'/%3E%3Ccircle cx='16' cy='9' r='3' fill='%239b3f36'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%238a6417'/%3E%3Ccircle cx='16' cy='23' r='3' fill='%233d6f48'/%3E%3C/svg%3E" />
+    <meta name="project" content="traffic-signals" />
+    <meta name="project-title" content="Traffic signals" />
+    <meta name="project-kind" content="tool" />
+    <link rel="stylesheet" href="https://varunswaika.github.io/varun-ui/shell/shell.css" />
+    <script
+      type="module"
+      src="https://varunswaika.github.io/varun-ui/shell/shell.js"
+    ></script>
     <script type="module" src="/src/main.ts"></script>
   </head>
   <body>
@@ -53,9 +62,9 @@
           <li><i class="key-house"></i>house: where trips start and end</li>
           <li><i class="key-car"></i>car (each a different colour)</li>
           <li>
-            <i class="key-line" style="background: var(--go)"></i>
-            <i class="key-line" style="background: var(--amber)"></i>
-            <i class="key-line" style="background: var(--stop)"></i>
+            <i class="key-line key-go"></i>
+            <i class="key-line key-amber"></i>
+            <i class="key-line key-stop"></i>
             signal across a lane: green go, amber, red stop
           </li>
         </ul>

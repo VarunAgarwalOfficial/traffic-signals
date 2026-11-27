@@ -170,6 +170,11 @@ pub struct Preset {
 /// Built-in scenarios.
 pub const PRESETS: &[Preset] = &[
     Preset {
+        id: "valley",
+        label: "Valley town",
+        text: include_str!("../presets/valley.txt"),
+    },
+    Preset {
         id: "town",
         label: "Town",
         text: include_str!("../presets/town.txt"),

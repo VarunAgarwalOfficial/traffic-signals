@@ -1,12 +1,11 @@
 /*
- * The site's look, "Editorial". Every colour, size, space, font and rule comes from
- * c-editorial-tokens.css, the site's token file copied unchanged (its fonts and their licences
- * are in public/fonts). The names below are this page's own, kept so the scripts need not change.
+ * The site's look. Every colour, size, space, font and rule comes from the shared shell's tokens,
+ * linked in index.html. The names below are this page's own, kept so the scripts need not change.
+ * The map itself is pixel art drawn by mapview.ts and town.ts from the palette in pixel.ts.
  */
-@import url("./c-editorial-tokens.css");
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --bg: var(--site-color-bg);
   --surface: var(--site-color-bg);
   --raised: var(--site-color-bg);
@@ -29,29 +28,6 @@
   --stop: var(--site-mean-against);
   --brake: var(--site-mean-against);
 
-  /*
-   * The map: roads are the page colour with a kerb in the muted ink, so the signal colours sit
-   * on the page colour itself; houses are filled in the muted ink.
-   */
-  --map-ground: var(--site-color-bg);
-  --map-dot: var(--site-color-rule);
-  --map-kerb: var(--site-color-muted);
-  --map-road: var(--site-color-bg);
-  --map-mark: var(--site-color-rule);
-  --map-house: var(--site-color-muted);
-  --map-roof: var(--site-color-bg);
-  --map-accent: var(--site-mean-open);
-  /*
-   * Cars: the ink, the muted ink, and the ink with 55% of each meaning colour mixed in, written
-   * out because a canvas cannot read color-mix(). Tinted inks, so no car reads as a signal.
-   */
-  --car-1: #211f1c;
-  --car-2: #625e57;
-  --car-3: #294460;
-  --car-4: #64312a;
-  --car-5: #5b4519;
-  --car-6: #304b34;
-
   /* The four meaning colours as chart series; a fifth controller adds a pattern. */
   --series-1: var(--site-mean-open);
   --series-2: var(--site-mean-against);
@@ -61,17 +37,6 @@
   --font: var(--site-font-body);
   --radius: var(--site-radius-1);
   --control: 2.75rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --car-1: #e7e4dd;
-    --car-2: #a8a49b;
-    --car-3: #b7cde2;
-    --car-4: #e3b3aa;
-    --car-5: #dac296;
-    --car-6: #b2cab2;
-  }
 }
 
 *,
@@ -359,20 +324,47 @@ input[type="range"] {
 
 /* ----- the town ----- */
 
+/*
+ * The map sits in a pixel frame: a hedge with a flower at each corner, inside the site's stepped
+ * sunflower line and its orange drop. Every step is one pixel unit (3px), the town's own pixel.
+ */
 .stage {
+  --hedge: calc(5 * var(--px-u));
   position: relative;
-  height: clamp(200px, min(52dvh, 60vw), 600px);
+  height: clamp(240px, min(70dvh, 64vw), 760px);
+  margin: var(--px-u) calc(3 * var(--px-u)) calc(3 * var(--px-u)) var(--px-u);
   overflow: hidden;
-  border-top: var(--site-rule-width) solid var(--line);
-  border-bottom: var(--site-rule-width) solid var(--line);
-  background: var(--map-ground);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' width='5' height='5' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='2' height='1' fill='%23ffb8cb'/%3E%3Crect x='4' y='0' width='1' height='1' fill='%23ffb8cb'/%3E%3Crect x='0' y='1' width='2' height='1' fill='%23ffb8cb'/%3E%3Crect x='2' y='1' width='1' height='1' fill='%23ffd23f'/%3E%3Crect x='3' y='1' width='2' height='1' fill='%23ffb8cb'/%3E%3Crect x='1' y='2' width='3' height='1' fill='%23ffb8cb'/%3E%3Crect x='0' y='3' width='1' height='1' fill='%23ffb8cb'/%3E%3Crect x='2' y='3' width='1' height='1' fill='%233f6b22'/%3E%3Crect x='4' y='3' width='1' height='1' fill='%23ffb8cb'/%3E%3Crect x='2' y='4' width='1' height='1' fill='%233f6b22'/%3E%3C/svg%3E")
+    left top / var(--hedge) var(--hedge) no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' width='5' height='5' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='3' y='0' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='0' y='1' width='5' height='1' fill='%23fffdf2'/%3E%3Crect x='1' y='2' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23ffd23f'/%3E%3Crect x='3' y='2' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='0' y='3' width='5' height='1' fill='%23fffdf2'/%3E%3Crect x='1' y='4' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='3' y='4' width='1' height='1' fill='%23fffdf2'/%3E%3C/svg%3E")
+    right top / var(--hedge) var(--hedge) no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' width='5' height='5' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='3' y='0' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='0' y='1' width='5' height='1' fill='%23fffdf2'/%3E%3Crect x='1' y='2' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23ffd23f'/%3E%3Crect x='3' y='2' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='0' y='3' width='5' height='1' fill='%23fffdf2'/%3E%3Crect x='1' y='4' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='3' y='4' width='1' height='1' fill='%23fffdf2'/%3E%3C/svg%3E")
+    left bottom / var(--hedge) var(--hedge) no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' width='5' height='5' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='2' height='1' fill='%23ffb8cb'/%3E%3Crect x='4' y='0' width='1' height='1' fill='%23ffb8cb'/%3E%3Crect x='0' y='1' width='2' height='1' fill='%23ffb8cb'/%3E%3Crect x='2' y='1' width='1' height='1' fill='%23ffd23f'/%3E%3Crect x='3' y='1' width='2' height='1' fill='%23ffb8cb'/%3E%3Crect x='1' y='2' width='3' height='1' fill='%23ffb8cb'/%3E%3Crect x='0' y='3' width='1' height='1' fill='%23ffb8cb'/%3E%3Crect x='2' y='3' width='1' height='1' fill='%233f6b22'/%3E%3Crect x='4' y='3' width='1' height='1' fill='%23ffb8cb'/%3E%3Crect x='2' y='4' width='1' height='1' fill='%233f6b22'/%3E%3C/svg%3E")
+    right bottom / var(--hedge) var(--hedge) no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='0' y='0' width='2' height='1' fill='%238fc25a'/%3E%3Crect x='2' y='0' width='1' height='1' fill='%236f9e3a'/%3E%3Crect x='3' y='0' width='3' height='1' fill='%238fc25a'/%3E%3Crect x='6' y='0' width='1' height='1' fill='%236f9e3a'/%3E%3Crect x='7' y='0' width='1' height='1' fill='%238fc25a'/%3E%3Crect x='0' y='1' width='1' height='1' fill='%238fc25a'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%23cfeaa0'/%3E%3Crect x='2' y='1' width='2' height='1' fill='%238fc25a'/%3E%3Crect x='4' y='1' width='1' height='1' fill='%236f9e3a'/%3E%3Crect x='5' y='1' width='2' height='1' fill='%238fc25a'/%3E%3Crect x='7' y='1' width='1' height='1' fill='%236f9e3a'/%3E%3Crect x='0' y='2' width='1' height='1' fill='%236f9e3a'/%3E%3Crect x='1' y='2' width='4' height='1' fill='%238fc25a'/%3E%3Crect x='5' y='2' width='1' height='1' fill='%23cfeaa0'/%3E%3Crect x='6' y='2' width='2' height='1' fill='%238fc25a'/%3E%3Crect x='0' y='3' width='2' height='1' fill='%238fc25a'/%3E%3Crect x='2' y='3' width='1' height='1' fill='%236f9e3a'/%3E%3Crect x='3' y='3' width='1' height='1' fill='%233f6b22'/%3E%3Crect x='4' y='3' width='3' height='1' fill='%238fc25a'/%3E%3Crect x='7' y='3' width='1' height='1' fill='%236f9e3a'/%3E%3Crect x='0' y='4' width='1' height='1' fill='%238fc25a'/%3E%3Crect x='1' y='4' width='1' height='1' fill='%236f9e3a'/%3E%3Crect x='2' y='4' width='3' height='1' fill='%238fc25a'/%3E%3Crect x='5' y='4' width='1' height='1' fill='%236f9e3a'/%3E%3Crect x='6' y='4' width='2' height='1' fill='%238fc25a'/%3E%3Crect x='0' y='5' width='1' height='1' fill='%23cfeaa0'/%3E%3Crect x='1' y='5' width='2' height='1' fill='%238fc25a'/%3E%3Crect x='3' y='5' width='1' height='1' fill='%236f9e3a'/%3E%3Crect x='4' y='5' width='2' height='1' fill='%238fc25a'/%3E%3Crect x='6' y='5' width='1' height='1' fill='%233f6b22'/%3E%3Crect x='7' y='5' width='1' height='1' fill='%238fc25a'/%3E%3Crect x='0' y='6' width='2' height='1' fill='%238fc25a'/%3E%3Crect x='2' y='6' width='1' height='1' fill='%233f6b22'/%3E%3Crect x='3' y='6' width='4' height='1' fill='%238fc25a'/%3E%3Crect x='7' y='6' width='1' height='1' fill='%236f9e3a'/%3E%3Crect x='0' y='7' width='1' height='1' fill='%236f9e3a'/%3E%3Crect x='1' y='7' width='3' height='1' fill='%238fc25a'/%3E%3Crect x='4' y='7' width='1' height='1' fill='%23cfeaa0'/%3E%3Crect x='5' y='7' width='1' height='1' fill='%236f9e3a'/%3E%3Crect x='6' y='7' width='2' height='1' fill='%238fc25a'/%3E%3C/svg%3E")
+    0 0 / calc(8 * var(--px-u)) calc(8 * var(--px-u)) repeat;
+  image-rendering: pixelated;
+  box-shadow:
+    0 calc(-1 * var(--px-u)) 0 0 var(--px-frame-line),
+    0 var(--px-u) 0 0 var(--px-frame-line),
+    calc(-1 * var(--px-u)) 0 0 0 var(--px-frame-line),
+    var(--px-u) 0 0 0 var(--px-frame-line),
+    var(--px-u) calc(2 * var(--px-u)) 0 0 var(--px-frame-drop),
+    calc(2 * var(--px-u)) var(--px-u) 0 0 var(--px-frame-drop),
+    calc(2 * var(--px-u)) calc(2 * var(--px-u)) 0 0 var(--px-frame-drop);
 }
 
+/* The town inside the hedge, with a dark line where the hedge meets it. */
 #map {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  inset: var(--hedge);
+  width: calc(100% - 2 * var(--hedge));
+  height: calc(100% - 2 * var(--hedge));
+  background: #cfeaa0;
+  outline: var(--px-u) solid #3f6b22;
+  image-rendering: pixelated;
 }
 
 /* Only while "Change the map" is open does the map take drags and pinches from the page. */
@@ -409,22 +401,43 @@ input[type="range"] {
   margin-top: calc((1lh - var(--mark-height, 0.75rem)) / 2);
 }
 
+/* The keys are the map's own sprites, at two screen pixels per art pixel. */
 .map-legend .key-house {
-  --mark-height: 12px;
-  background: var(--map-house);
+  --mark-height: 30px;
+  width: 32px;
+  height: 30px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 15' width='16' height='15' shape-rendering='crispEdges'%3E%3Crect x='4' y='0' width='8' height='1' fill='%233b2a1a'/%3E%3Crect x='3' y='1' width='1' height='1' fill='%233b2a1a'/%3E%3Crect x='4' y='1' width='8' height='1' fill='%23ffd2b8'/%3E%3Crect x='12' y='1' width='1' height='1' fill='%233b2a1a'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%233b2a1a'/%3E%3Crect x='3' y='2' width='9' height='1' fill='%23f7a985'/%3E%3Crect x='12' y='2' width='1' height='1' fill='%239c4a2f'/%3E%3Crect x='13' y='2' width='1' height='1' fill='%233b2a1a'/%3E%3Crect x='1' y='3' width='1' height='1' fill='%233b2a1a'/%3E%3Crect x='2' y='3' width='2' height='1' fill='%23f7a985'/%3E%3Crect x='4' y='3' width='1' height='1' fill='%23ffd2b8'/%3E%3Crect x='5' y='3' width='3' height='1' fill='%23f7a985'/%3E%3Crect x='8' y='3' width='1' height='1' fill='%23ffd2b8'/%3E%3Crect x='9' y='3' width='3' height='1' fill='%23f7a985'/%3E%3Crect x='12' y='3' width='2' height='1' fill='%239c4a2f'/%3E%3Crect x='14' y='3' width='1' height='1' fill='%233b2a1a'/%3E%3Crect x='0' y='4' width='1' height='1' fill='%233b2a1a'/%3E%3Crect x='1' y='4' width='11' height='1' fill='%23f7a985'/%3E%3Crect x='12' y='4' width='3' height='1' fill='%239c4a2f'/%3E%3Crect x='15' y='4' width='1' height='1' fill='%233b2a1a'/%3E%3Crect x='0' y='5' width='1' height='1' fill='%233b2a1a'/%3E%3Crect x='1' y='5' width='1' height='1' fill='%23f7a985'/%3E%3Crect x='2' y='5' width='1' height='1' fill='%23ffd2b8'/%3E%3Crect x='3' y='5' width='3' height='1' fill='%23f7a985'/%3E%3Crect x='6' y='5' width='1' height='1' fill='%23ffd2b8'/%3E%3Crect x='7' y='5' width='3' height='1' fill='%23f7a985'/%3E%3Crect x='10' y='5' width='1' height='1' fill='%23ffd2b8'/%3E%3Crect x='11' y='5' width='1' height='1' fill='%23f7a985'/%3E%3Crect x='12' y='5' width='3' height='1' fill='%239c4a2f'/%3E%3Crect x='15' y='5' width='1' height='1' fill='%233b2a1a'/%3E%3Crect x='0' y='6' width='1' height='1' fill='%233b2a1a'/%3E%3Crect x='1' y='6' width='11' height='1' fill='%23f7a985'/%3E%3Crect x='12' y='6' width='3' height='1' fill='%239c4a2f'/%3E%3Crect x='15' y='6' width='1' height='1' fill='%233b2a1a'/%3E%3Crect x='0' y='7' width='16' height='1' fill='%233b2a1a'/%3E%3Crect x='1' y='8' width='14' height='1' fill='%23b3a58e'/%3E%3Crect x='1' y='9' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='2' y='9' width='3' height='1' fill='%237a5232'/%3E%3Crect x='5' y='9' width='2' height='1' fill='%23fffdf2'/%3E%3Crect x='7' y='9' width='2' height='1' fill='%233b2a1a'/%3E%3Crect x='9' y='9' width='2' height='1' fill='%23fffdf2'/%3E%3Crect x='11' y='9' width='3' height='1' fill='%237a5232'/%3E%3Crect x='14' y='9' width='1' height='1' fill='%23d4c8b4'/%3E%3Crect x='1' y='10' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='2' y='10' width='1' height='1' fill='%237a5232'/%3E%3Crect x='3' y='10' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='4' y='10' width='1' height='1' fill='%23a9d8ef'/%3E%3Crect x='5' y='10' width='2' height='1' fill='%23fffdf2'/%3E%3Crect x='7' y='10' width='2' height='1' fill='%23a8703f'/%3E%3Crect x='9' y='10' width='2' height='1' fill='%23fffdf2'/%3E%3Crect x='11' y='10' width='1' height='1' fill='%237a5232'/%3E%3Crect x='12' y='10' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='13' y='10' width='1' height='1' fill='%23a9d8ef'/%3E%3Crect x='14' y='10' width='1' height='1' fill='%23d4c8b4'/%3E%3Crect x='1' y='11' width='1' height='1' fill='%23fffdf2'/%3E%3Crect x='2' y='11' width='1' height='1' fill='%237a5232'/%3E%3Crect x='3' y='11' width='2' height='1' fill='%23a9d8ef'/%3E%3Crect x='5' y='11' width='2' height='1' fill='%23fffdf2'/%3E%3Crect x='7' y='11' width='2' height='1' fill='%23a8703f'/%3E%3Crect x='9' y='11' width='2' height='1' fill='%23fffdf2'/%3E%3Crect x='11' y='11' width='1' height='1' fill='%237a5232'/%3E%3Crect x='12' y='11' width='2' height='1' fill='%23a9d8ef'/%3E%3Crect x='14' y='11' width='1' height='1' fill='%23d4c8b4'/%3E%3Crect x='1' y='12' width='6' height='1' fill='%23fffdf2'/%3E%3Crect x='7' y='12' width='1' height='1' fill='%23a8703f'/%3E%3Crect x='8' y='12' width='1' height='1' fill='%23ffd23f'/%3E%3Crect x='9' y='12' width='5' height='1' fill='%23fffdf2'/%3E%3Crect x='14' y='12' width='1' height='1' fill='%23d4c8b4'/%3E%3Crect x='1' y='13' width='6' height='1' fill='%23fffdf2'/%3E%3Crect x='7' y='13' width='2' height='1' fill='%23a8703f'/%3E%3Crect x='9' y='13' width='5' height='1' fill='%23fffdf2'/%3E%3Crect x='14' y='13' width='1' height='1' fill='%23d4c8b4'/%3E%3Crect x='1' y='14' width='14' height='1' fill='%23b3a58e'/%3E%3C/svg%3E")
+    0 0 / 100% 100%;
+  image-rendering: pixelated;
 }
 
 .map-legend .key-car {
-  --mark-height: 6px;
-  width: 14px;
-  height: 6px;
-  background: var(--car-3);
+  --mark-height: 9px;
+  width: 15px;
+  height: 9px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 3' width='5' height='3' shape-rendering='crispEdges'%3E%3Crect x='0' y='0' width='1' height='1' fill='%232f6297'/%3E%3Crect x='1' y='0' width='3' height='1' fill='%237fb6e0'/%3E%3Crect x='4' y='0' width='1' height='1' fill='%23fff0b0'/%3E%3Crect x='0' y='1' width='1' height='1' fill='%237fb6e0'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%232f6297'/%3E%3Crect x='2' y='1' width='1' height='1' fill='%23e3f3fb'/%3E%3Crect x='3' y='1' width='1' height='1' fill='%23e3f3fb'/%3E%3Crect x='4' y='1' width='1' height='1' fill='%237fb6e0'/%3E%3Crect x='0' y='2' width='1' height='1' fill='%232f6297'/%3E%3Crect x='1' y='2' width='3' height='1' fill='%237fb6e0'/%3E%3Crect x='4' y='2' width='1' height='1' fill='%23fff0b0'/%3E%3C/svg%3E")
+    0 0 / 100% 100%;
+  image-rendering: pixelated;
 }
 
 .map-legend .key-line {
-  --mark-height: 14px;
-  width: 3px;
-  height: 14px;
+  --mark-height: 12px;
+  width: 6px;
+  height: 12px;
+}
+
+.map-legend .key-go {
+  background: var(--go);
+}
+
+.map-legend .key-amber {
+  background: var(--amber);
+}
+
+.map-legend .key-stop {
+  background: var(--stop);
 }
 
 .transport,
@@ -814,6 +827,8 @@ legend {
   display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
+  image-rendering: pixelated;
+  outline: var(--px-u) solid #3f6b22;
 }
 
 .results {
