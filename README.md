@@ -5,7 +5,7 @@ the traffic signals are controlled, then run the same seeded traffic under sever
 compare delay and throughput. The simulation is a Rust library; the browser runs it as WebAssembly
 and a command line runs the same code for sweeps.
 
-![Compare view: the same traffic in the default town under each of the five controllers, one seed](docs/screenshot.png)
+![Compare view: the same traffic in the default town under each of the five controllers, at 900 trips an hour, one seed](docs/screenshot.png)
 
 ## Results
 
