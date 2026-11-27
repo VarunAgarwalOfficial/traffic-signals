@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/banner.png" alt="Pixel art: little cars wait at a crossroads with two signals" width="100%"></p>
+<p align="center"><img src="docs/banner.png" alt="Pixel art: cars queue at a red light beside a phase timer, while the other signal shows green" width="100%"></p>
 
 # Traffic signals
 
