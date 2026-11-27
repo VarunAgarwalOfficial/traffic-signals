@@ -238,7 +238,7 @@ impl Controller for SelfOrganising {
 /// its movements; the phase with the most pressure gets green for at least one
 /// slot.
 ///
-/// The capacity-aware form (Gregoire et al., 2014) replaces queue lengths by a
+/// The capacity-aware form (Gregoire et al., 2015) replaces queue lengths by a
 /// convex pressure in [0, 1] that reaches 1 when a lane is full, and ignores
 /// movements nobody is waiting for. A full lane downstream then cancels the
 /// pull of any queue, so green is not spent on cars that cannot move.

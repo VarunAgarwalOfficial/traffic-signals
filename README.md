@@ -26,7 +26,7 @@ From `./scripts/validate.sh`, 10 seeds a row, mean with a 95% interval. The full
   finishes 3990 trips an hour against plain max pressure's 3608. After a 15-minute jam it emptied
   the town in 6 of 6 seeds; max pressure managed 2.
 - Three published results reproduced in kind (Gershenson 2005, Varaiya 2013, Gregoire et al.
-  2014). Across 2160 runs no two cars ever overlapped.
+  2015). Across 2160 runs no two cars ever overlapped.
 
 **Stack:** Rust with no dependencies for the simulation, compiled to WebAssembly through a plain C
 interface; TypeScript and canvas with Vite for the page; a Rust command line for sweeps.
@@ -166,7 +166,7 @@ adding two lines to the list there.
 | Actuated | Hold green while cars are within 25 m of the line, up to 40 s; then serve the next phase with demand; rest in green if nobody waits. | FHWA Signal Timing Manual, ch. 5 |
 | Self-organising | Each red phase adds up cars within 80 m, times seconds. At 8 car-seconds, after 6 s of green, it gets green (the paper's sotl-phase). | Gershenson 2005 |
 | Max pressure | Every 10 s or later, green goes to the phase with the largest sum over its movements of (cars waiting for the movement) minus (cars on the lane it feeds, divided by that lane's exits). | Varaiya 2013; Wongpiromsarn et al. 2012 |
-| Capacity-aware pressure | The same with each queue replaced by the convex pressure of Gregoire et al. (their eq. 5, m = 4), which reaches 1 when a lane is full, and with movements nobody waits for ignored. | Gregoire et al. 2014 |
+| Capacity-aware pressure | The same with each queue replaced by the convex pressure of Gregoire et al. (their eq. 5, m = 4), which reaches 1 when a lane is full, and with movements nobody waits for ignored. | Gregoire et al. 2015 |
 
 Settings are `param` lines in a scenario or `--param` on the command line: `fixed.green`,
 `actuated.max_green`, `sotl.theta`, `sotl.min_green`, `sotl.platoon`, `pressure.slot`.
@@ -217,7 +217,7 @@ Read against the published results:
   has 294 outstanding and growing. Other green times do not rescue fixed time: of 10, 20, 30 and
   40 s the best at 4000 is 10 s, which finishes 3782 ± 53 an hour (`results/grid-fixed-*.csv`).
 - **Plain max pressure fails when roads fill up, and capacity-aware pressure fixes it** (Gregoire
-  et al. 2014). At 6500 capacity-aware pressure finishes 3990 ± 93 an hour against 3608 ± 124. In
+  et al. 2015). At 6500 capacity-aware pressure finishes 3990 ± 93 an hour against 3608 ± 124. In
   the town, jammed with 7000 trips an hour for 15 minutes and then left alone, capacity-aware
   pressure emptied the roads in 6 of 6 seeds and max pressure in 2 of 6: it holds green for a
   queue whose exit is full while cars that could move wait at red.
@@ -317,8 +317,9 @@ muted text 5.9 and 7.1; the signal and series colours against the page, which is
   Research Part C 36.
 - Wongpiromsarn, Uthaicharoenpong, Wang, Frazzoli, Wang, 2012. Distributed traffic signal control
   for maximum network throughput. arXiv:1205.5938
-- Gregoire, Qian, Frazzoli, de La Fortelle, Wongpiromsarn, 2014. Capacity-aware back-pressure
-  traffic signal control. arXiv:1309.6484
+- Gregoire, Qian, Frazzoli, de La Fortelle, Wongpiromsarn, 2015. Capacity-aware backpressure
+  traffic signal control. IEEE Transactions on Control of Network Systems 2(2).
+  doi:10.1109/TCNS.2014.2378871. arXiv:1309.6484
 - Treiber, Hennecke, Helbing, 2000. Congested traffic states in empirical observations and
   microscopic simulations. Physical Review E 62. arXiv:cond-mat/0002177
 - Bando, Hasebe, Nakayama, Shibata, Sugiyama, 1995. Dynamical model of traffic congestion and
